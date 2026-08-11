@@ -1,6 +1,7 @@
 """
 Проверяет все машины в базе Supabase и шлёт уведомление в Telegram,
-если до конца злиття осталось 5 минут или меньше.
+если до конца злиття осталось от 6 до 10 минут (окно с запасом,
+чтобы не пропустить момент даже при небольших задержках проверки).
 Запускается по расписанию через GitHub Actions (см. .github/workflows/check.yml).
 """
 
@@ -17,7 +18,9 @@ SUPABASE_ANON_KEY = os.environ["SUPABASE_ANON_KEY"]
 TELEGRAM_BOT_TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
 TELEGRAM_CHAT_ID = os.environ["TELEGRAM_CHAT_ID"]
 
-WARNING_WINDOW_SECONDS = 5 * 60  # предупреждать, когда осталось <= 5 минут
+WARNING_WINDOW_MAX_SECONDS = 10 * 60  # верхняя граница окна предупреждения
+WARNING_WINDOW_MIN_SECONDS = 6 * 60   # нижняя граница окна предупреждения
+RESET_THRESHOLD_SECONDS = WARNING_WINDOW_MAX_SECONDS  # выше этого — сбрасываем флаг
 
 
 def http_request(url, method="GET", headers=None, body=None):
@@ -101,7 +104,9 @@ def main():
         remaining_seconds = compute_remaining_seconds(data)
         already_notified = data.get("notified5min", False)
 
-        if remaining_seconds <= WARNING_WINDOW_SECONDS and remaining_seconds > 0:
+        in_warning_window = WARNING_WINDOW_MIN_SECONDS <= remaining_seconds <= WARNING_WINDOW_MAX_SECONDS
+
+        if in_warning_window:
             if not already_notified:
                 minutes = math.ceil(remaining_seconds / 60)
                 send_telegram_message(
@@ -110,9 +115,10 @@ def main():
                 )
                 data["notified5min"] = True
                 patch_machine_data(row_id, data)
-        elif remaining_seconds > WARNING_WINDOW_SECONDS:
-            # Если запас снова стал большим (например данные обновили) — сбрасываем флаг,
-            # чтобы уведомление могло сработать заново для нового цикла.
+        elif remaining_seconds > RESET_THRESHOLD_SECONDS or remaining_seconds <= 0:
+            # Если запас снова стал большим (например данные обновили) или злиття уже
+            # закончилось — сбрасываем флаг, чтобы уведомление могло сработать заново
+            # для нового цикла.
             if already_notified:
                 data["notified5min"] = False
                 patch_machine_data(row_id, data)
