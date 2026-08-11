@@ -3,7 +3,7 @@ name: Check machines and notify
 on:
   schedule:
     # GitHub Actions cron работает в UTC. Каждую минуту.
-    - cron: '* * * * *'
+    - cron: '*/5 * * * *'
   workflow_dispatch: {}  # позволяет запустить вручную из вкладки Actions для проверки
 
 jobs:
