@@ -1,0 +1,1185 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+<title>Контроль злиттів — етикетки</title>
+
+<!-- PWA / iOS "Добавить на экран Домой" -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Злиття">
+<meta name="theme-color" content="#12161c">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='36' fill='%2312161c'/%3E%3Ctext x='90' y='122' font-size='96' text-anchor='middle'%3E%F0%9F%AA%A3%3C/text%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='36' fill='%2312161c'/%3E%3Ctext x='90' y='122' font-size='96' text-anchor='middle'%3E%F0%9F%AA%A3%3C/text%3E%3C/svg%3E">
+
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --bg: #12161c;
+    --panel: #1a2029;
+    --panel-2: #212836;
+    --border: #2a3140;
+    --text: #e7ebf1;
+    --text-dim: #8b95a5;
+    --accent: #ff9f1c;
+    --accent-dim: #6b4a12;
+    --ok: #3ddc84;
+    --warn: #ffb347;
+    --danger: #ff5c5c;
+    --danger-glow: rgba(255, 92, 92, 0.35);
+    --mono: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
+    --sans: 'Inter', -apple-system, 'Segoe UI', sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    background-image:
+      radial-gradient(circle at 20% -10%, rgba(255,159,28,0.06), transparent 45%),
+      radial-gradient(circle at 90% 10%, rgba(61,220,132,0.04), transparent 40%);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    padding: calc(20px + env(safe-area-inset-top)) 16px calc(60px + env(safe-area-inset-bottom));
+  }
+
+  header {
+    max-width: 1200px;
+    margin: 0 auto 24px;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 16px;
+  }
+
+  header h1 {
+    font-size: 22px;
+    margin: 0;
+    letter-spacing: 0.3px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  header h1 .dot {
+    width: 9px; height: 9px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 10px var(--accent);
+  }
+
+  header .clock {
+    font-family: var(--mono);
+    color: var(--text-dim);
+    font-size: 14px;
+  }
+
+  main {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  /* --- Тулбар с кнопкой добавления --- */
+  .toolbar {
+    margin-bottom: 16px;
+  }
+
+  .btn-add-machine {
+    width: 100%;
+    padding: 14px;
+    font-size: 15px;
+  }
+
+  .add-modal {
+    max-width: 460px;
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+  }
+
+  .field label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+  }
+
+  .calc-trigger {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--accent);
+    font-size: 14px;
+    line-height: 1;
+    padding: 3px 7px;
+    border-radius: 6px;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: border-color .15s, background .15s;
+  }
+  .calc-trigger:hover {
+    border-color: var(--accent);
+    background: var(--accent-dim);
+  }
+
+  .field input {
+    width: 100%;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 15px;
+    transition: border-color .15s;
+  }
+
+  .field input:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  .form-actions {
+    margin-top: 16px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .btn {
+    border: none;
+    border-radius: 8px;
+    padding: 11px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: var(--sans);
+    transition: transform .1s, filter .15s;
+  }
+  .btn:active { transform: scale(0.97); }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #1a1200;
+  }
+  .btn-primary:hover { filter: brightness(1.08); }
+
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+  }
+  .btn-ghost:hover { color: var(--text); border-color: var(--text-dim); }
+
+  .btn-danger {
+    background: var(--danger);
+    color: #2a0a0a;
+  }
+  .btn-danger:hover { filter: brightness(1.1); }
+
+  .confirm-delete {
+    background: rgba(255,92,92,0.08);
+    border: 1px solid rgba(255,92,92,0.35);
+    border-radius: 10px;
+    padding: 14px;
+    text-align: center;
+  }
+  .confirm-delete span {
+    display: block;
+    font-size: 14px;
+    margin-bottom: 12px;
+    color: var(--text);
+  }
+  .confirm-delete-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+  }
+  .confirm-delete-actions .btn {
+    padding: 9px 16px;
+    font-size: 13px;
+  }
+
+  .form-error {
+    color: var(--danger);
+    font-size: 13px;
+  }
+
+  /* --- Список машин --- */
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-dim);
+    border: 1px dashed var(--border);
+    border-radius: 14px;
+  }
+  .empty-state .big {
+    font-size: 40px;
+    margin-bottom: 8px;
+    opacity: .5;
+  }
+
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 8px;
+  }
+
+  .tile {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px;
+    aspect-ratio: 1 / 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 4px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: border-color .3s, box-shadow .3s, transform .1s;
+  }
+  .tile:active { transform: scale(0.96); }
+
+  .tile.state-ok { border-color: var(--border); }
+  .tile.state-warn {
+    border-color: rgba(255,179,71,0.5);
+    box-shadow: 0 0 0 1px rgba(255,179,71,0.15);
+  }
+  .tile.state-danger {
+    border-color: rgba(255,92,92,0.6);
+    box-shadow: 0 0 18px var(--danger-glow);
+    animation: pulse-danger 1.8s ease-in-out infinite;
+  }
+  .tile.state-done {
+    border-color: var(--ok);
+    box-shadow: 0 0 14px rgba(61,220,132,0.25);
+  }
+
+  @keyframes pulse-danger {
+    0%, 100% { box-shadow: 0 0 12px var(--danger-glow); }
+    50% { box-shadow: 0 0 22px var(--danger-glow); }
+  }
+
+  .tile-name {
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .tile-countdown {
+    font-family: var(--mono);
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    line-height: 1.15;
+  }
+  .tile.state-warn .tile-countdown { color: var(--warn); }
+  .tile.state-danger .tile-countdown { color: var(--danger); }
+  .tile.state-done .tile-countdown { color: var(--ok); }
+
+  .tile-progress {
+    height: 4px;
+    background: var(--panel-2);
+    border-radius: 3px;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .tile-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--ok));
+    transition: width .5s ease;
+  }
+  .tile.state-danger .tile-progress-fill { background: var(--danger); }
+  .tile.state-done .tile-progress-fill { background: var(--ok); }
+
+  .tile-remaining {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .tile-remaining span {
+    font-family: var(--sans);
+    font-weight: 400;
+    color: var(--text-dim);
+    font-size: 9.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    margin-left: 3px;
+  }
+
+  .tile-finish {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--text-dim);
+    line-height: 1.3;
+    border-top: 1px solid var(--border);
+    padding-top: 4px;
+  }
+  .tile-finish b {
+    display: block;
+    color: var(--text);
+    font-weight: 600;
+    font-size: 11.5px;
+  }
+
+  /* --- Модалка деталей машины --- */
+  .detail-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(8, 10, 14, 0.72);
+    backdrop-filter: blur(2px);
+    z-index: 110;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  .detail-overlay.open { display: flex; }
+
+  .detail-modal {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    width: 100%;
+    max-width: 380px;
+    padding: 18px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    max-height: 88vh;
+    overflow-y: auto;
+  }
+
+  .card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 14px;
+  }
+
+  .machine-name {
+    font-size: 18px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .status-chip {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    padding: 3px 8px;
+    border-radius: 20px;
+    font-weight: 700;
+  }
+  .state-ok .status-chip { background: rgba(61,220,132,0.12); color: var(--ok); }
+  .state-warn .status-chip { background: rgba(255,179,71,0.15); color: var(--warn); }
+  .state-danger .status-chip { background: rgba(255,92,92,0.18); color: var(--danger); }
+  .state-done .status-chip { background: rgba(61,220,132,0.2); color: var(--ok); }
+
+  .icon-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    line-height: 1;
+    transition: background .15s, color .15s;
+  }
+  .icon-btn:hover { background: rgba(255,92,92,0.12); color: var(--danger); }
+
+  .countdown {
+    font-family: var(--mono);
+    font-size: 34px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+  }
+  .state-warn .countdown { color: var(--warn); }
+  .state-danger .countdown { color: var(--danger); }
+  .state-done .countdown { color: var(--ok); }
+
+  .countdown-label {
+    font-size: 11px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 16px;
+  }
+
+  .stat-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .stat-box {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+  }
+  .stat-box .v {
+    font-family: var(--mono);
+    font-size: 16px;
+    font-weight: 600;
+  }
+  .stat-box .l {
+    font-size: 10.5px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    margin-top: 2px;
+  }
+
+  .finish-time {
+    font-size: 13px;
+    color: var(--text-dim);
+    border-top: 1px solid var(--border);
+    padding-top: 12px;
+    display: flex;
+    justify-content: space-between;
+  }
+  .finish-time b { color: var(--text); font-family: var(--mono); font-weight: 600; }
+
+  .progress-bar {
+    height: 5px;
+    background: var(--panel-2);
+    border-radius: 3px;
+    overflow: hidden;
+    margin: 12px 0;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--ok));
+    transition: width .5s ease;
+  }
+  .state-danger .progress-bar-fill { background: var(--danger); }
+  .state-done .progress-bar-fill { background: var(--ok); }
+
+  .meta-note {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-top: 8px;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .detail-delete-row {
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+  }
+  .detail-delete-row .btn { width: 100%; }
+
+  footer {
+    max-width: 1200px;
+    margin: 40px auto 0;
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 12px;
+  }
+
+  /* --- Калькулятор палеты --- */
+  .calc-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(8, 10, 14, 0.7);
+    backdrop-filter: blur(2px);
+    z-index: 120;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  .calc-overlay.open { display: flex; }
+
+  .calc-modal {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    width: 100%;
+    max-width: 340px;
+    padding: 18px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+
+  .calc-modal-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 16px;
+  }
+
+  .calc-body .field {
+    margin-bottom: 12px;
+  }
+
+  .calc-result {
+    background: var(--panel-2);
+    border: 1px solid var(--accent-dim);
+    border-radius: 8px;
+    padding: 10px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 8px;
+  }
+  .calc-result span {
+    font-size: 12px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+  }
+  .calc-result b {
+    font-family: var(--mono);
+    font-size: 22px;
+    color: var(--accent);
+  }
+
+  .calc-modal-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+  }
+  .calc-modal-actions .btn {
+    flex: 1;
+  }
+
+  @media (max-width: 480px) {
+    .countdown { font-size: 20px; }
+    .form-grid { grid-template-columns: 1fr 1fr; }
+    .cards { grid-template-columns: 1fr 1fr; gap: 8px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1><span class="dot"></span> Контроль злиттів</h1>
+  <div class="clock" id="liveClock">—</div>
+</header>
+
+<main>
+  <div class="toolbar">
+    <button class="btn btn-primary btn-add-machine" id="openAddPanelBtn">+ Добавить машину</button>
+  </div>
+
+  <div id="emptyState" class="empty-state" style="display:none;">
+    <div class="big">🪣</div>
+    Пока нет машин под контролем.<br>Добавьте первую машину кнопкой выше.
+  </div>
+
+  <section class="cards" id="cardsWrap"></section>
+</main>
+
+<!-- Форма добавления машины -->
+<div id="addOverlay" class="detail-overlay">
+  <div class="detail-modal add-modal">
+    <div class="calc-modal-head">
+      <span>Добавить машину</span>
+      <button type="button" class="icon-btn" id="addPanelClose" title="Закрыть">✕</button>
+    </div>
+    <div class="form-grid">
+      <div class="field">
+        <label for="f-machine">Номер машины</label>
+        <input type="text" id="f-machine" placeholder="" inputmode="text">
+      </div>
+      <div class="field">
+        <label for="f-total">Кол-во на злитті (шт)</label>
+        <input type="number" id="f-total" placeholder="" min="1" step="1" inputmode="numeric" pattern="[0-9]*">
+      </div>
+      <div class="field">
+        <label for="f-perPallet">Шт на палете</label>
+        <input type="number" id="f-perPallet" placeholder="" min="1" step="1" inputmode="numeric" pattern="[0-9]*">
+      </div>
+      <div class="field">
+        <label for="f-palletNum">Текущая (незаконч.) палета №</label>
+        <input type="number" id="f-palletNum" placeholder="" min="1" step="1" inputmode="numeric" pattern="[0-9]*">
+      </div>
+      <div class="field">
+        <label for="f-onCurrent">
+          Шт на текущей палете
+          <button type="button" class="calc-trigger" id="calcTrigger" title="Калькулятор палеты">🖲️</button>
+        </label>
+        <input type="number" id="f-onCurrent" placeholder="" min="0" step="1" inputmode="numeric" pattern="[0-9]*">
+      </div>
+      <div class="field">
+        <label for="f-cycle">Цикл 1 ведра (сек)</label>
+        <input type="text" id="f-cycle" placeholder="" inputmode="decimal">
+      </div>
+      <div class="field">
+        <label for="f-zlittyaNum">Номер злиття</label>
+        <input type="number" id="f-zlittyaNum" placeholder="" min="0" step="1" inputmode="numeric" pattern="[0-9]*">
+      </div>
+      <div class="field">
+        <label for="f-etiketkaNum">Номер етикетки</label>
+        <input type="number" id="f-etiketkaNum" placeholder="" min="0" step="1" inputmode="numeric" pattern="[0-9]*">
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-primary" id="addBtn">Записать машину</button>
+      <span class="form-error" id="formError"></span>
+    </div>
+  </div>
+</div>
+
+
+<!-- Калькулятор палеты -->
+<div id="calcOverlay" class="calc-overlay">
+  <div class="calc-modal">
+    <div class="calc-modal-head">
+      <span>🖲️ Калькулятор палеты</span>
+      <button type="button" class="icon-btn" id="calcClose" title="Закрыть">✕</button>
+    </div>
+    <div class="calc-body">
+      <div class="field">
+        <label for="calc-inStack">Кол-во в стопке (шт)</label>
+        <input type="number" id="calc-inStack" placeholder="" min="0" step="1" inputmode="numeric" pattern="[0-9]*">
+      </div>
+      <div class="field">
+        <label for="calc-stacks">Кол-во стопок</label>
+        <input type="number" id="calc-stacks" placeholder="" min="0" step="1" inputmode="numeric" pattern="[0-9]*">
+      </div>
+      <div class="field">
+        <label for="calc-extra">Дополнительно (шт)</label>
+        <input type="number" id="calc-extra" placeholder="" min="0" step="1" inputmode="numeric" pattern="[0-9]*">
+      </div>
+      <div class="calc-result">
+        <span>Результат:</span>
+        <b id="calcResultVal">0</b>
+      </div>
+    </div>
+    <div class="calc-modal-actions">
+      <button type="button" class="btn btn-primary" id="calcApply">Добавить</button>
+      <button type="button" class="btn btn-ghost" id="calcCancel">Отмена</button>
+    </div>
+  </div>
+</div>
+
+<!-- Детали машины -->
+<div id="detailOverlay" class="detail-overlay">
+  <div class="detail-modal" id="detailModal"></div>
+</div>
+
+<footer>Данные общие для всех, кто открывает эту ссылку, и обновляются автоматически.</footer>
+
+<script>
+(function () {
+  // ---- интеграция с Telegram Mini App ----
+  if (window.Telegram && window.Telegram.WebApp) {
+    const tg = window.Telegram.WebApp;
+    tg.ready();
+    tg.expand();
+    if (tg.disableVerticalSwipes) tg.disableVerticalSwipes();
+    if (tg.setHeaderColor) { try { tg.setHeaderColor('#12161c'); } catch (e) {} }
+    if (tg.setBackgroundColor) { try { tg.setBackgroundColor('#12161c'); } catch (e) {} }
+  }
+
+  const SUPABASE_URL = 'https://scwtoxypbdmlwdoifvmp.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNjd3RveHlwYmRtbHdkb2lmdm1wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0NDAwMjcsImV4cCI6MjEwMjAxNjAyN30.z0xH6w7MY4afcB-YcgbpCWbs9OiBFODg0r_BGp7JN7g';
+
+  if (!window.supabase) {
+    document.addEventListener('DOMContentLoaded', function () {
+      const err = document.getElementById('formError');
+      if (err) err.textContent = 'Не удалось загрузить библиотеку связи с сервером. Проверьте интернет и перезагрузите страницу.';
+    });
+    throw new Error('Supabase SDK не загружен');
+  }
+
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const TABLE = 'machines';
+
+  // Локальный кэш — чтобы интерфейс не мигал пустотой, пока идёт запрос к серверу.
+  const LOCAL_CACHE_KEY = 'zlittya_machines_cache_v1';
+
+  function loadCachedMachines() {
+    try {
+      const raw = localStorage.getItem(LOCAL_CACHE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveCachedMachines(list) {
+    try {
+      localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(list));
+    } catch (e) {}
+  }
+
+  // Приводим строку из Supabase (id + data-jsonb) к плоскому объекту машины,
+  // как его ожидает остальной код приложения.
+  function rowToMachine(row) {
+    return Object.assign({}, row.data, { id: row.id });
+  }
+
+  async function fetchMachinesFromServer() {
+    const { data, error } = await sb.from(TABLE).select('id, data').order('id', { ascending: true });
+    if (error) {
+      console.error('Ошибка загрузки из Supabase', error);
+      return null;
+    }
+    return data.map(rowToMachine);
+  }
+
+  async function insertMachineOnServer(machineData) {
+    const { data, error } = await sb.from(TABLE).insert({ data: machineData }).select('id, data').single();
+    if (error) {
+      console.error('Ошибка добавления в Supabase', error);
+      return null;
+    }
+    return rowToMachine(data);
+  }
+
+  async function deleteMachineOnServer(id) {
+    const { error } = await sb.from(TABLE).delete().eq('id', id);
+    if (error) {
+      console.error('Ошибка удаления в Supabase', error);
+      return false;
+    }
+    return true;
+  }
+
+  let machines = loadCachedMachines();
+  let pendingDeleteId = null;
+  let isOnline = true;
+
+  // ---- helpers ----
+  function parseDecimal(str) {
+    if (typeof str !== 'string') return NaN;
+    const normalized = str.trim().replace(',', '.');
+    return parseFloat(normalized);
+  }
+
+  function fmtNum(n) {
+    return new Intl.NumberFormat('ru-RU').format(Math.round(n));
+  }
+
+  function pad(n) { return n < 10 ? '0' + n : '' + n; }
+
+  function fmtDuration(totalSeconds) {
+    if (totalSeconds <= 0) return '00:00:00';
+    const s = Math.floor(totalSeconds);
+    const days = Math.floor(s / 86400);
+    const hrs = Math.floor((s % 86400) / 3600);
+    const mins = Math.floor((s % 3600) / 60);
+    const secs = s % 60;
+    if (days > 0) {
+      return `${days}д ${pad(hrs)}:${pad(mins)}:${pad(secs)}`;
+    }
+    return `${pad(hrs)}:${pad(mins)}:${pad(secs)}`;
+  }
+
+  function fmtDateTime(date) {
+    const dd = pad(date.getDate());
+    const mm = pad(date.getMonth() + 1);
+    const yy = date.getFullYear();
+    const hh = pad(date.getHours());
+    const mi = pad(date.getMinutes());
+    const ss = pad(date.getSeconds());
+    return `${dd}.${mm}.${yy} ${hh}:${mi}:${ss}`;
+  }
+
+  function fmtTimeOnly(date) {
+    const hh = pad(date.getHours());
+    const mi = pad(date.getMinutes());
+    return `${hh}:${mi}`;
+  }
+
+  // Основной расчёт:
+  // palletNum — номер ТЕКУЩЕЙ (ещё не законченной) палеты на момент ВВОДА данных.
+  // enteredAt — момент времени (мс), когда были введены/обновлены эти данные.
+  // Всё, что произошло после enteredAt, досчитывается автоматически по циклу:
+  //   прошло_секунд = (сейчас - enteredAt) / 1000
+  //   вёдер_добавилось = floor(прошло_секунд / cycle)
+  //   done_сейчас = done_на_момент_ввода + вёдер_добавилось (не больше total)
+  function computeMachine(m) {
+    const fullPallets = Math.max(m.palletNum - 1, 0);
+    const doneAtEntry = (fullPallets * m.perPallet) + m.onCurrent;
+
+    const elapsedSeconds = Math.max((Date.now() - m.enteredAt) / 1000, 0);
+    const producedSinceEntry = Math.floor(elapsedSeconds / m.cycle);
+
+    const done = Math.min(doneAtEntry + producedSinceEntry, m.total);
+    const remainingPieces = Math.max(m.total - done, 0);
+
+    // Точное время окончания фиксируется от момента ввода и больше не "плывёт":
+    // сколько секунд оставалось при вводе * цикл, от enteredAt.
+    const remainingSecondsAtEntry = Math.max(m.total - doneAtEntry, 0) * m.cycle;
+    const finishDate = new Date(m.enteredAt + remainingSecondsAtEntry * 1000);
+
+    // Текущий обратный отсчёт — сколько реально осталось секунд от "сейчас" до finishDate.
+    const remainingSeconds = Math.max((finishDate.getTime() - Date.now()) / 1000, 0);
+
+    const progress = m.total > 0 ? Math.min(done / m.total, 1) : 0;
+    return { done, remainingPieces, remainingSeconds, finishDate, progress };
+  }
+
+  function stateFor(remainingSeconds, remainingPieces) {
+    if (remainingPieces <= 0) return 'done';
+    if (remainingSeconds <= 5 * 60) return 'danger';   // менее 5 минут
+    if (remainingSeconds <= 20 * 60) return 'warn';    // менее 20 минут
+    return 'ok';
+  }
+
+  function statusLabel(state) {
+    switch (state) {
+      case 'done': return 'Готово';
+      case 'danger': return 'Срочно';
+      case 'warn': return 'Скоро';
+      default: return 'В работе';
+    }
+  }
+
+  // ---- render ----
+  const cardsWrap = document.getElementById('cardsWrap');
+  const emptyState = document.getElementById('emptyState');
+  const detailOverlay = document.getElementById('detailOverlay');
+  const detailModal = document.getElementById('detailModal');
+  let openDetailId = null;
+
+  function render() {
+    if (machines.length === 0) {
+      emptyState.style.display = 'block';
+      cardsWrap.innerHTML = '';
+    } else {
+      emptyState.style.display = 'none';
+      cardsWrap.innerHTML = machines.map((m) => {
+        const calc = computeMachine(m);
+        const state = stateFor(calc.remainingSeconds, calc.remainingPieces);
+        return `
+          <div class="tile state-${state}" data-action="open-detail" data-id="${m.id}">
+            <div class="tile-name">🏭 ${escapeHtml(m.machine)}</div>
+            <div class="tile-countdown">${fmtDuration(calc.remainingSeconds)}</div>
+            <div class="tile-progress"><div class="tile-progress-fill" style="width:${(calc.progress*100).toFixed(1)}%"></div></div>
+            <div class="tile-remaining">${fmtNum(calc.remainingPieces)}<span>шт до конца</span></div>
+            <div class="tile-finish">Конец злиття<b>${fmtTimeOnly(calc.finishDate)}</b></div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    if (openDetailId !== null) {
+      renderDetail();
+    }
+  }
+
+  function renderDetail() {
+    const m = machines.find(x => String(x.id) === String(openDetailId));
+    if (!m) {
+      closeDetail();
+      return;
+    }
+    const calc = computeMachine(m);
+    const state = stateFor(calc.remainingSeconds, calc.remainingPieces);
+    const isPendingDelete = String(pendingDeleteId) === String(m.id);
+
+    detailModal.className = `detail-modal state-${state}`;
+    detailModal.innerHTML = `
+      <div class="card-top">
+        <div class="machine-name">🏭 ${escapeHtml(m.machine)}
+          <span class="status-chip">${statusLabel(state)}</span>
+        </div>
+        <button class="icon-btn" data-action="close-detail" title="Закрыть">✕</button>
+      </div>
+
+      <div class="countdown">${fmtDuration(calc.remainingSeconds)}</div>
+      <div class="countdown-label">Обратный отсчёт до конца злиття</div>
+
+      <div class="progress-bar"><div class="progress-bar-fill" style="width:${(calc.progress*100).toFixed(1)}%"></div></div>
+
+      <div class="stat-row">
+        <div class="stat-box">
+          <div class="v">${fmtNum(calc.remainingPieces)}</div>
+          <div class="l">Шт до конца (остаток)</div>
+        </div>
+        <div class="stat-box">
+          <div class="v">${fmtNum(calc.done)} / ${fmtNum(m.total)}</div>
+          <div class="l">Сделано / Всего</div>
+        </div>
+      </div>
+
+      <div class="finish-time">
+        <span>Точное время конца злиття:</span>
+        <b>${fmtDateTime(calc.finishDate)}</b>
+      </div>
+
+      <div class="meta-note">Незаконч. палета №${m.palletNum} · ${m.onCurrent}/${m.perPallet} шт · цикл ${String(m.cycle).replace('.', ',')} с</div>
+      ${(m.zlittyaNum || m.etiketkaNum) ? `
+      <div class="meta-note">${m.zlittyaNum ? `Злиття №${m.zlittyaNum}` : ''}${m.zlittyaNum && m.etiketkaNum ? ' · ' : ''}${m.etiketkaNum ? `Етикетка №${m.etiketkaNum}` : ''}</div>
+      ` : ''}
+
+      <div class="detail-delete-row">
+        ${isPendingDelete ? `
+          <div class="confirm-delete">
+            <span>Удалить машину «${escapeHtml(m.machine)}»?</span>
+            <div class="confirm-delete-actions">
+              <button class="btn btn-danger" data-action="confirm-delete" data-id="${m.id}">Удалить</button>
+              <button class="btn btn-ghost" data-action="cancel-delete" data-id="${m.id}">Отмена</button>
+            </div>
+          </div>
+        ` : `
+          <button class="btn btn-ghost" data-action="delete" data-id="${m.id}">Удалить машину</button>
+        `}
+      </div>
+    `;
+  }
+
+  function openDetail(id) {
+    openDetailId = id;
+    pendingDeleteId = null;
+    renderDetail();
+    detailOverlay.classList.add('open');
+  }
+
+  function closeDetail() {
+    openDetailId = null;
+    pendingDeleteId = null;
+    detailOverlay.classList.remove('open');
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  // ---- events ----
+  cardsWrap.addEventListener('click', function (e) {
+    const tile = e.target.closest('[data-action="open-detail"]');
+    if (tile) {
+      openDetail(tile.dataset.id);
+    }
+  });
+
+  detailOverlay.addEventListener('click', function (e) {
+    if (e.target === detailOverlay) {
+      closeDetail();
+      return;
+    }
+    const closeBtn = e.target.closest('[data-action="close-detail"]');
+    if (closeBtn) {
+      closeDetail();
+      return;
+    }
+    const btn = e.target.closest('[data-action="delete"]');
+    if (btn) {
+      pendingDeleteId = btn.dataset.id;
+      renderDetail();
+      return;
+    }
+    const yesBtn = e.target.closest('[data-action="confirm-delete"]');
+    if (yesBtn) {
+      const id = yesBtn.dataset.id;
+      // Оптимистично убираем из интерфейса сразу, не дожидаясь ответа сервера.
+      const backup = machines;
+      machines = machines.filter(m => String(m.id) !== String(id));
+      saveCachedMachines(machines);
+      closeDetail();
+      render();
+      deleteMachineOnServer(id).then(function (ok) {
+        if (!ok) {
+          // Откатываем, если сервер не смог удалить.
+          machines = backup;
+          saveCachedMachines(machines);
+          render();
+          showError('Не удалось удалить на сервере. Проверьте интернет.');
+        }
+      });
+      return;
+    }
+    const noBtn = e.target.closest('[data-action="cancel-delete"]');
+    if (noBtn) {
+      pendingDeleteId = null;
+      renderDetail();
+      return;
+    }
+  });
+
+  const formError = document.getElementById('formError');
+  const addBtn = document.getElementById('addBtn');
+  addBtn.addEventListener('click', async function () {
+    formError.textContent = '';
+
+    const machine = document.getElementById('f-machine').value.trim();
+    const total = parseInt(document.getElementById('f-total').value, 10);
+    const perPallet = parseInt(document.getElementById('f-perPallet').value, 10);
+    const palletNum = parseInt(document.getElementById('f-palletNum').value, 10);
+    const onCurrent = parseInt(document.getElementById('f-onCurrent').value, 10);
+    const cycle = parseDecimal(document.getElementById('f-cycle').value);
+    const zlittyaNumRaw = document.getElementById('f-zlittyaNum').value;
+    const etiketkaNumRaw = document.getElementById('f-etiketkaNum').value;
+    const zlittyaNum = zlittyaNumRaw === '' ? null : parseInt(zlittyaNumRaw, 10);
+    const etiketkaNum = etiketkaNumRaw === '' ? null : parseInt(etiketkaNumRaw, 10);
+
+    if (!machine) return showError('Укажите номер машины.');
+    if (!total || total <= 0) return showError('Укажите кол-во на злитті.');
+    if (!perPallet || perPallet <= 0) return showError('Укажите кол-во шт на палете.');
+    if (!palletNum || palletNum < 1) return showError('Укажите номер текущей (незаконченной) палеты.');
+    if (isNaN(onCurrent) || onCurrent < 0) return showError('Укажите кол-во шт на текущей палете.');
+    if (!cycle || cycle <= 0) return showError('Укажите время цикла (сек).');
+
+    const machineData = {
+      machine, total, perPallet, palletNum, onCurrent, cycle,
+      zlittyaNum, etiketkaNum,
+      enteredAt: Date.now(),
+      createdAt: Date.now()
+    };
+
+    addBtn.disabled = true;
+    addBtn.textContent = 'Записываем…';
+
+    const created = await insertMachineOnServer(machineData);
+
+    addBtn.disabled = false;
+    addBtn.textContent = 'Записать машину';
+
+    if (!created) {
+      showError('Не удалось сохранить на сервере. Проверьте интернет и попробуйте снова.');
+      return;
+    }
+
+    machines.push(created);
+    saveCachedMachines(machines);
+    render();
+    clearForm();
+    closeAddPanel();
+  });
+
+  function showError(msg) { formError.textContent = msg; }
+
+  function clearForm() {
+    ['f-machine','f-total','f-perPallet','f-palletNum','f-onCurrent','f-cycle','f-zlittyaNum','f-etiketkaNum']
+      .forEach(id => document.getElementById(id).value = '');
+    formError.textContent = '';
+  }
+
+  // ---- модалка добавления машины ----
+  const addOverlay = document.getElementById('addOverlay');
+
+  function openAddPanel() {
+    addOverlay.classList.add('open');
+    document.getElementById('f-machine').focus();
+  }
+
+  function closeAddPanel() {
+    addOverlay.classList.remove('open');
+  }
+
+  document.getElementById('openAddPanelBtn').addEventListener('click', openAddPanel);
+  document.getElementById('addPanelClose').addEventListener('click', function () {
+    clearForm();
+    closeAddPanel();
+  });
+  addOverlay.addEventListener('click', function (e) {
+    if (e.target === addOverlay) {
+      clearForm();
+      closeAddPanel();
+    }
+  });
+
+  // ---- калькулятор палеты ----
+  const calcOverlay = document.getElementById('calcOverlay');
+  const calcInStack = document.getElementById('calc-inStack');
+  const calcStacks = document.getElementById('calc-stacks');
+  const calcExtra = document.getElementById('calc-extra');
+  const calcResultVal = document.getElementById('calcResultVal');
+
+  function calcCompute() {
+    const inStack = parseInt(calcInStack.value, 10) || 0;
+    const stacks = parseInt(calcStacks.value, 10) || 0;
+    const extra = parseInt(calcExtra.value, 10) || 0;
+    const result = (inStack * stacks) + extra;
+    calcResultVal.textContent = fmtNum(result);
+    return result;
+  }
+
+  function openCalc() {
+    calcInStack.value = '';
+    calcStacks.value = '';
+    calcExtra.value = '';
+    calcResultVal.textContent = '0';
+    calcOverlay.classList.add('open');
+    calcInStack.focus();
+  }
+
+  function closeCalc() {
+    calcOverlay.classList.remove('open');
+  }
+
+  document.getElementById('calcTrigger').addEventListener('click', openCalc);
+  document.getElementById('calcClose').addEventListener('click', closeCalc);
+  document.getElementById('calcCancel').addEventListener('click', closeCalc);
+  calcOverlay.addEventListener('click', function (e) {
+    if (e.target === calcOverlay) closeCalc();
+  });
+  [calcInStack, calcStacks, calcExtra].forEach(el => {
+    el.addEventListener('input', calcCompute);
+  });
+
+  document.getElementById('calcApply').addEventListener('click', function () {
+    const result = calcCompute();
+    document.getElementById('f-onCurrent').value = result;
+    closeCalc();
+  });
+
+  // ---- live clock ----
+  function tickClock() {
+    document.getElementById('liveClock').textContent = fmtDateTime(new Date());
+  }
+
+  // ---- main loop: обновляем расчёты каждую секунду ----
+  setInterval(function () {
+    tickClock();
+    render();
+  }, 1000);
+
+  tickClock();
+  render(); // сразу показываем кэш, пока грузим свежие данные с сервера
+
+  // ---- загрузка актуальных данных с сервера + подписка на изменения в реальном времени ----
+  async function syncFromServer() {
+    const fresh = await fetchMachinesFromServer();
+    if (fresh !== null) {
+      machines = fresh;
+      saveCachedMachines(machines);
+      render();
+    }
+  }
+
+  syncFromServer();
+
+  // Подписка: когда кто-то другой добавит/удалит машину, список обновится сам.
+  sb.channel('machines-changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: TABLE }, function () {
+      syncFromServer();
+    })
+    .subscribe();
+})();
+</script>
+
+</body>
+</html>
