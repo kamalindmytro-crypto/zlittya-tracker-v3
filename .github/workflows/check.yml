@@ -1,0 +1,26 @@
+name: Check machines and notify
+
+on:
+  schedule:
+    # GitHub Actions cron работает в UTC. Каждую минуту.
+    - cron: '* * * * *'
+  workflow_dispatch: {}  # позволяет запустить вручную из вкладки Actions для проверки
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run check
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python check_and_notify.py
