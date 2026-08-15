@@ -1,602 +1,461 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="uk">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
-<title>Контроль злиттів — етикетки</title>
-
-<!-- PWA / iOS "Добавить на экран Домой" -->
+<title>Виробництво · Трекер</title>
+ 
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Злиття">
-<meta name="theme-color" content="#12161c">
-<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='36' fill='%2312161c'/%3E%3Ctext x='90' y='122' font-size='96' text-anchor='middle'%3E%F0%9F%AA%A3%3C/text%3E%3C/svg%3E">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='36' fill='%2312161c'/%3E%3Ctext x='90' y='122' font-size='96' text-anchor='middle'%3E%F0%9F%AA%A3%3C/text%3E%3C/svg%3E">
-
+<meta name="apple-mobile-web-app-title" content="Виробництво">
+<meta name="theme-color" content="#14171a">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='36' fill='%2314171a'/%3E%3Ctext x='90' y='122' font-size='96' text-anchor='middle'%3E%F0%9F%AA%A3%3C/text%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='36' fill='%2314171a'/%3E%3Ctext x='90' y='122' font-size='96' text-anchor='middle'%3E%F0%9F%AA%A3%3C/text%3E%3C/svg%3E">
+ 
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+ 
 <style>
-  :root {
-    --bg: #12161c;
-    --panel: #1a2029;
-    --panel-2: #212836;
-    --border: #2a3140;
-    --text: #e7ebf1;
-    --text-dim: #8b95a5;
-    --accent: #ff9f1c;
-    --accent-dim: #6b4a12;
-    --ok: #3ddc84;
-    --warn: #ffb347;
-    --danger: #ff5c5c;
-    --danger-glow: rgba(255, 92, 92, 0.35);
-    --mono: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
-    --sans: 'Inter', -apple-system, 'Segoe UI', sans-serif;
-  }
-
-  * { box-sizing: border-box; }
-
-  body {
-    margin: 0;
-    background: var(--bg);
-    background-image:
-      radial-gradient(circle at 20% -10%, rgba(255,159,28,0.06), transparent 45%),
-      radial-gradient(circle at 90% 10%, rgba(61,220,132,0.04), transparent 40%);
-    color: var(--text);
-    font-family: var(--sans);
-    min-height: 100vh;
-    padding: calc(20px + env(safe-area-inset-top)) 16px calc(60px + env(safe-area-inset-bottom));
-  }
-
-  header {
-    max-width: 1200px;
-    margin: 0 auto 24px;
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 8px;
-    border-bottom: 1px solid var(--border);
-    padding-bottom: 16px;
-  }
-
-  header h1 {
-    font-size: 22px;
-    margin: 0;
-    letter-spacing: 0.3px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  header h1 .dot {
-    width: 9px; height: 9px; border-radius: 50%;
-    background: var(--accent);
-    box-shadow: 0 0 10px var(--accent);
-  }
-
-  header .clock {
-    font-family: var(--mono);
-    color: var(--text-dim);
-    font-size: 14px;
-  }
-
-  main {
-    max-width: 1200px;
-    margin: 0 auto;
-  }
-
-  /* --- Тулбар с кнопкой добавления --- */
-  .toolbar {
-    margin-bottom: 16px;
-  }
-
-  .btn-add-machine {
-    width: 100%;
-    padding: 14px;
-    font-size: 15px;
-  }
-
-  .add-modal {
-    max-width: 460px;
-  }
-
-  .form-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 12px;
-  }
-
-  .field label {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    font-size: 12px;
-    color: var(--text-dim);
-    margin-bottom: 6px;
-  }
-
-  .calc-trigger {
-    background: var(--panel-2);
-    border: 1px solid var(--border);
-    color: var(--accent);
-    font-size: 14px;
-    line-height: 1;
-    padding: 3px 7px;
-    border-radius: 6px;
-    cursor: pointer;
-    flex-shrink: 0;
-    transition: border-color .15s, background .15s;
-  }
-  .calc-trigger:hover {
-    border-color: var(--accent);
-    background: var(--accent-dim);
-  }
-
-  .field input {
-    width: 100%;
-    background: var(--panel-2);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 10px 12px;
-    color: var(--text);
-    font-family: var(--mono);
-    font-size: 15px;
-    transition: border-color .15s;
-  }
-
-  .field input:focus {
-    outline: none;
-    border-color: var(--accent);
-  }
-
-  .form-actions {
-    margin-top: 16px;
-    display: flex;
-    gap: 10px;
-    align-items: center;
-  }
-
-  .btn {
-    border: none;
-    border-radius: 8px;
-    padding: 11px 20px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    font-family: var(--sans);
-    transition: transform .1s, filter .15s;
-  }
-  .btn:active { transform: scale(0.97); }
-
-  .btn-primary {
-    background: var(--accent);
-    color: #1a1200;
-  }
-  .btn-primary:hover { filter: brightness(1.08); }
-
-  .btn-ghost {
-    background: transparent;
-    border: 1px solid var(--border);
-    color: var(--text-dim);
-  }
-  .btn-ghost:hover { color: var(--text); border-color: var(--text-dim); }
-
-  .btn-danger {
-    background: var(--danger);
-    color: #2a0a0a;
-  }
-  .btn-danger:hover { filter: brightness(1.1); }
-
-  .confirm-delete {
-    background: rgba(255,92,92,0.08);
-    border: 1px solid rgba(255,92,92,0.35);
-    border-radius: 10px;
-    padding: 14px;
-    text-align: center;
-  }
-  .confirm-delete span {
-    display: block;
-    font-size: 14px;
-    margin-bottom: 12px;
-    color: var(--text);
-  }
-  .confirm-delete-actions {
-    display: flex;
-    gap: 8px;
-    justify-content: center;
-  }
-  .confirm-delete-actions .btn {
-    padding: 9px 16px;
-    font-size: 13px;
-  }
-
-  .form-error {
-    color: var(--danger);
-    font-size: 13px;
-  }
-
-  /* --- Список машин --- */
-  .empty-state {
-    text-align: center;
-    padding: 60px 20px;
-    color: var(--text-dim);
-    border: 1px dashed var(--border);
-    border-radius: 14px;
-  }
-  .empty-state .big {
-    font-size: 40px;
-    margin-bottom: 8px;
-    opacity: .5;
-  }
-
-  .cards {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 8px;
-  }
-
-  .tile {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 10px;
-    aspect-ratio: 1 / 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    gap: 4px;
-    cursor: pointer;
-    position: relative;
-    overflow: hidden;
-    transition: border-color .3s, box-shadow .3s, transform .1s;
-  }
-  .tile:active { transform: scale(0.96); }
-
-  .tile.state-ok { border-color: var(--border); }
-  .tile.state-warn {
-    border-color: rgba(255,179,71,0.5);
-    box-shadow: 0 0 0 1px rgba(255,179,71,0.15);
-  }
-  .tile.state-danger {
-    border-color: rgba(255,92,92,0.6);
-    box-shadow: 0 0 18px var(--danger-glow);
-    animation: pulse-danger 1.8s ease-in-out infinite;
-  }
-  .tile.state-done {
-    border-color: var(--ok);
-    box-shadow: 0 0 14px rgba(61,220,132,0.25);
-  }
-
-  @keyframes pulse-danger {
-    0%, 100% { box-shadow: 0 0 12px var(--danger-glow); }
-    50% { box-shadow: 0 0 22px var(--danger-glow); }
-  }
-
-  .tile-name {
-    font-size: 13px;
-    font-weight: 700;
-    line-height: 1.2;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .tile-countdown {
-    font-family: var(--mono);
-    font-size: 17px;
-    font-weight: 700;
-    letter-spacing: 0.2px;
-    line-height: 1.15;
-  }
-  .tile.state-warn .tile-countdown { color: var(--warn); }
-  .tile.state-danger .tile-countdown { color: var(--danger); }
-  .tile.state-done .tile-countdown { color: var(--ok); }
-
-  .tile-progress {
-    height: 4px;
-    background: var(--panel-2);
-    border-radius: 3px;
-    overflow: hidden;
-    flex-shrink: 0;
-  }
-  .tile-progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--accent), var(--ok));
-    transition: width .5s ease;
-  }
-  .tile.state-danger .tile-progress-fill { background: var(--danger); }
-  .tile.state-done .tile-progress-fill { background: var(--ok); }
-
-  .tile-remaining {
-    font-family: var(--mono);
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text);
-  }
-  .tile-remaining span {
-    font-family: var(--sans);
-    font-weight: 400;
-    color: var(--text-dim);
-    font-size: 9.5px;
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
-    margin-left: 3px;
-  }
-
-  .tile-finish {
-    font-family: var(--mono);
-    font-size: 10.5px;
-    color: var(--text-dim);
-    line-height: 1.3;
-    border-top: 1px solid var(--border);
-    padding-top: 4px;
-  }
-  .tile-finish b {
-    display: block;
-    color: var(--text);
-    font-weight: 600;
-    font-size: 11.5px;
-  }
-
-  /* --- Модалка деталей машины --- */
-  .detail-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(8, 10, 14, 0.72);
-    backdrop-filter: blur(2px);
-    z-index: 110;
-    align-items: center;
-    justify-content: center;
-    padding: 16px;
-  }
-  .detail-overlay.open { display: flex; }
-
-  .detail-modal {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    width: 100%;
-    max-width: 380px;
-    padding: 18px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-    max-height: 88vh;
-    overflow-y: auto;
-  }
-
-  .card-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 14px;
-  }
-
-  .machine-name {
-    font-size: 18px;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .status-chip {
-    font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.6px;
-    padding: 3px 8px;
-    border-radius: 20px;
-    font-weight: 700;
-  }
-  .state-ok .status-chip { background: rgba(61,220,132,0.12); color: var(--ok); }
-  .state-warn .status-chip { background: rgba(255,179,71,0.15); color: var(--warn); }
-  .state-danger .status-chip { background: rgba(255,92,92,0.18); color: var(--danger); }
-  .state-done .status-chip { background: rgba(61,220,132,0.2); color: var(--ok); }
-
-  .icon-btn {
-    background: transparent;
-    border: none;
-    color: var(--text-dim);
-    cursor: pointer;
-    font-size: 16px;
-    padding: 4px 8px;
-    border-radius: 6px;
-    line-height: 1;
-    transition: background .15s, color .15s;
-  }
-  .icon-btn:hover { background: rgba(255,92,92,0.12); color: var(--danger); }
-
-  .countdown {
-    font-family: var(--mono);
-    font-size: 34px;
-    font-weight: 700;
-    letter-spacing: 1px;
-    margin-bottom: 4px;
-  }
-  .state-warn .countdown { color: var(--warn); }
-  .state-danger .countdown { color: var(--danger); }
-  .state-done .countdown { color: var(--ok); }
-
-  .countdown-label {
-    font-size: 11px;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-    margin-bottom: 16px;
-  }
-
-  .stat-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-bottom: 14px;
-  }
-
-  .stat-box {
-    background: var(--panel-2);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 8px 10px;
-  }
-  .stat-box .v {
-    font-family: var(--mono);
-    font-size: 16px;
-    font-weight: 600;
-  }
-  .stat-box .l {
-    font-size: 10.5px;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.4px;
-    margin-top: 2px;
-  }
-
-  .finish-time {
-    font-size: 13px;
-    color: var(--text-dim);
-    border-top: 1px solid var(--border);
-    padding-top: 12px;
-    display: flex;
-    justify-content: space-between;
-  }
-  .finish-time b { color: var(--text); font-family: var(--mono); font-weight: 600; }
-
-  .progress-bar {
-    height: 5px;
-    background: var(--panel-2);
-    border-radius: 3px;
-    overflow: hidden;
-    margin: 12px 0;
-  }
-  .progress-bar-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--accent), var(--ok));
-    transition: width .5s ease;
-  }
-  .state-danger .progress-bar-fill { background: var(--danger); }
-  .state-done .progress-bar-fill { background: var(--ok); }
-
-  .meta-note {
-    font-size: 12px;
-    color: var(--text-dim);
-    margin-top: 8px;
-    display: flex;
-    gap: 6px;
-    align-items: center;
-  }
-
-  .detail-delete-row {
-    margin-top: 16px;
-    padding-top: 14px;
-    border-top: 1px solid var(--border);
-  }
-  .detail-delete-row .btn { width: 100%; }
-
-  footer {
-    max-width: 1200px;
-    margin: 40px auto 0;
-    text-align: center;
-    color: var(--text-dim);
-    font-size: 12px;
-  }
-
-  /* --- Калькулятор палеты --- */
-  .calc-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(8, 10, 14, 0.7);
-    backdrop-filter: blur(2px);
-    z-index: 120;
-    align-items: center;
-    justify-content: center;
-    padding: 16px;
-  }
-  .calc-overlay.open { display: flex; }
-
-  .calc-modal {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    width: 100%;
-    max-width: 340px;
-    padding: 18px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-  }
-
-  .calc-modal-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 14px;
-    font-weight: 600;
-    margin-bottom: 16px;
-  }
-
-  .calc-body .field {
-    margin-bottom: 12px;
-  }
-
-  .calc-result {
-    background: var(--panel-2);
-    border: 1px solid var(--accent-dim);
-    border-radius: 8px;
-    padding: 10px 12px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 8px;
-  }
-  .calc-result span {
-    font-size: 12px;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.6px;
-  }
-  .calc-result b {
-    font-family: var(--mono);
-    font-size: 22px;
-    color: var(--accent);
-  }
-
-  .calc-modal-actions {
-    display: flex;
-    gap: 10px;
-    margin-top: 16px;
-  }
-  .calc-modal-actions .btn {
-    flex: 1;
-  }
-
-  @media (max-width: 480px) {
-    .countdown { font-size: 20px; }
-    .form-grid { grid-template-columns: 1fr 1fr; }
-    .cards { grid-template-columns: 1fr 1fr; gap: 8px; }
-  }
+/* ======================= GLOBAL / SHARED CHROME ======================= */
+:root{
+  --bg:#14171a;
+  --surface:#1c2024;
+  --surface-2:#242a2f;
+  --surface-3:#2c333a;
+  --border:#343c43;
+  --text:#eceeef;
+  --text-muted:#8f9aa3;
+  --text-dim:#666f77;
+  --amber:#f2a93b;
+  --amber-dim:#7a5a1f;
+  --red:#e35b3d;
+  --green:#38c98a;
+  --green-dim:#1c4f3c;
+  --radius:10px;
+  --mono: ui-monospace, "SFMono-Regular", "Roboto Mono", Menlo, Consolas, monospace;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:var(--sans);}
+body{-webkit-tap-highlight-color:transparent; padding-bottom:24px;}
+button{font-family:inherit;}
+input,select,textarea{font-family:inherit;}
+::-webkit-scrollbar{width:0;height:0;}
+ 
+.app{max-width:640px;margin:0 auto;min-height:100vh;background:var(--bg);}
+ 
+header.top{
+  position:sticky;top:0;z-index:20;
+  background:linear-gradient(180deg,#181c1f 0%, #14171a 100%);
+  border-bottom:1px solid var(--border);
+  padding:14px 16px 0 16px;
+}
+.brand{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+.brand .lamp{width:10px;height:10px;border-radius:50%;background:var(--amber);box-shadow:0 0 8px 2px rgba(242,169,59,.55);}
+.brand h1{font-size:15px;letter-spacing:.06em;text-transform:uppercase;font-weight:700;margin:0;color:var(--text);}
+.brand span{color:var(--text-dim);font-size:12px;margin-left:auto;font-family:var(--mono);}
+ 
+.tabs{display:flex;gap:2px;overflow-x:auto;}
+.tab{
+  flex:1;text-align:center;padding:10px 4px 12px 4px;border:none;background:transparent;
+  color:var(--text-muted);font-size:12.5px;font-weight:600;letter-spacing:.02em;
+  border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap;
+}
+.tab.active{color:var(--amber);border-bottom-color:var(--amber);}
+ 
+main{padding:14px 14px 40px 14px;}
+section{display:none;}
+section.active{display:block;}
+ 
+footer{
+  max-width:640px;margin:28px auto 0;padding:0 16px;text-align:center;
+  color:var(--text-dim);font-size:11.5px;line-height:1.5;
+}
+ 
+/* ======================= MODULE: ЗЛИТТЯ (zlyttya) ======================= */
+.mod-zlyttya{
+  --bg:#12161c;
+  --panel:#1a2029;
+  --panel-2:#212836;
+  --border:#2a3140;
+  --text:#e7ebf1;
+  --text-dim:#8b95a5;
+  --accent:#ff9f1c;
+  --accent-dim:#6b4a12;
+  --ok:#3ddc84;
+  --warn:#ffb347;
+  --danger:#ff5c5c;
+  --danger-glow: rgba(255, 92, 92, 0.35);
+}
+ 
+.mod-zlyttya .toolbar{ margin-bottom:16px; }
+.mod-zlyttya .btn-add-machine{ width:100%; padding:14px; font-size:15px; }
+.mod-zlyttya .add-modal{ max-width:460px; }
+ 
+.mod-zlyttya .form-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(140px, 1fr));
+  gap:12px;
+}
+.mod-zlyttya .field label{
+  display:flex; align-items:center; justify-content:space-between; gap:8px;
+  font-size:12px; color:var(--text-dim); margin-bottom:6px;
+}
+.mod-zlyttya .calc-trigger{
+  background:var(--panel-2); border:1px solid var(--border); color:var(--accent);
+  font-size:14px; line-height:1; padding:3px 7px; border-radius:6px; cursor:pointer;
+  flex-shrink:0; transition:border-color .15s, background .15s;
+}
+.mod-zlyttya .calc-trigger:hover{ border-color:var(--accent); background:var(--accent-dim); }
+.mod-zlyttya .field input{
+  width:100%; background:var(--panel-2); border:1px solid var(--border); border-radius:8px;
+  padding:10px 12px; color:var(--text); font-family:var(--mono); font-size:15px;
+  transition:border-color .15s;
+}
+.mod-zlyttya .field input:focus{ outline:none; border-color:var(--accent); }
+ 
+.mod-zlyttya .form-actions{ margin-top:16px; display:flex; gap:10px; align-items:center; }
+.mod-zlyttya .btn{
+  border:none; border-radius:8px; padding:11px 20px; font-size:14px; font-weight:600;
+  cursor:pointer; font-family:var(--sans); transition:transform .1s, filter .15s;
+}
+.mod-zlyttya .btn:active{ transform:scale(0.97); }
+.mod-zlyttya .btn-primary{ background:var(--accent); color:#1a1200; }
+.mod-zlyttya .btn-primary:hover{ filter:brightness(1.08); }
+.mod-zlyttya .btn-ghost{ background:transparent; border:1px solid var(--border); color:var(--text-dim); }
+.mod-zlyttya .btn-ghost:hover{ color:var(--text); border-color:var(--text-dim); }
+.mod-zlyttya .btn-danger{ background:var(--danger); color:#2a0a0a; }
+.mod-zlyttya .btn-danger:hover{ filter:brightness(1.1); }
+ 
+.mod-zlyttya .confirm-delete{
+  background:rgba(255,92,92,0.08); border:1px solid rgba(255,92,92,0.35); border-radius:10px;
+  padding:14px; text-align:center;
+}
+.mod-zlyttya .confirm-delete span{ display:block; font-size:14px; margin-bottom:12px; color:var(--text); }
+.mod-zlyttya .confirm-delete-actions{ display:flex; gap:8px; justify-content:center; }
+.mod-zlyttya .confirm-delete-actions .btn{ padding:9px 16px; font-size:13px; }
+ 
+.mod-zlyttya .form-error{ color:var(--danger); font-size:13px; }
+ 
+.mod-zlyttya .empty-state{
+  text-align:center; padding:60px 20px; color:var(--text-dim);
+  border:1px dashed var(--border); border-radius:14px;
+}
+.mod-zlyttya .empty-state .big{ font-size:40px; margin-bottom:8px; opacity:.5; }
+ 
+.mod-zlyttya .cards{
+  display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:8px;
+}
+.mod-zlyttya .tile{
+  background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:10px;
+  aspect-ratio:1 / 1; display:flex; flex-direction:column; justify-content:space-between; gap:4px;
+  cursor:pointer; position:relative; overflow:hidden;
+  transition:border-color .3s, box-shadow .3s, transform .1s;
+}
+.mod-zlyttya .tile:active{ transform:scale(0.96); }
+.mod-zlyttya .tile.state-ok{ border-color:var(--border); }
+.mod-zlyttya .tile.state-warn{ border-color:rgba(255,179,71,0.5); box-shadow:0 0 0 1px rgba(255,179,71,0.15); }
+.mod-zlyttya .tile.state-danger{
+  border-color:rgba(255,92,92,0.6); box-shadow:0 0 18px var(--danger-glow);
+  animation:zl-pulse-danger 1.8s ease-in-out infinite;
+}
+.mod-zlyttya .tile.state-done{ border-color:var(--ok); box-shadow:0 0 14px rgba(61,220,132,0.25); }
+@keyframes zl-pulse-danger{ 0%,100%{ box-shadow:0 0 12px var(--danger-glow); } 50%{ box-shadow:0 0 22px var(--danger-glow); } }
+ 
+.mod-zlyttya .tile-name{ font-size:13px; font-weight:700; line-height:1.2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mod-zlyttya .tile-countdown{ font-family:var(--mono); font-size:17px; font-weight:700; letter-spacing:0.2px; line-height:1.15; }
+.mod-zlyttya .tile.state-warn .tile-countdown{ color:var(--warn); }
+.mod-zlyttya .tile.state-danger .tile-countdown{ color:var(--danger); }
+.mod-zlyttya .tile.state-done .tile-countdown{ color:var(--ok); }
+ 
+.mod-zlyttya .tile-progress{ height:4px; background:var(--panel-2); border-radius:3px; overflow:hidden; flex-shrink:0; }
+.mod-zlyttya .tile-progress-fill{ height:100%; background:linear-gradient(90deg, var(--accent), var(--ok)); transition:width .5s ease; }
+.mod-zlyttya .tile.state-danger .tile-progress-fill{ background:var(--danger); }
+.mod-zlyttya .tile.state-done .tile-progress-fill{ background:var(--ok); }
+ 
+.mod-zlyttya .tile-remaining{ font-family:var(--mono); font-size:12px; font-weight:600; color:var(--text); }
+.mod-zlyttya .tile-remaining span{ font-family:var(--sans); font-weight:400; color:var(--text-dim); font-size:9.5px; text-transform:uppercase; letter-spacing:0.3px; margin-left:3px; }
+ 
+.mod-zlyttya .tile-finish{ font-family:var(--mono); font-size:10.5px; color:var(--text-dim); line-height:1.3; border-top:1px solid var(--border); padding-top:4px; }
+.mod-zlyttya .tile-finish b{ display:block; color:var(--text); font-weight:600; font-size:11.5px; }
+ 
+.mod-zlyttya.detail-overlay{
+  display:none; position:fixed; inset:0; background:rgba(8,10,14,0.72); backdrop-filter:blur(2px);
+  z-index:110; align-items:center; justify-content:center; padding:16px;
+}
+.mod-zlyttya.detail-overlay.open{ display:flex; }
+.mod-zlyttya .detail-modal{
+  background:var(--panel); border:1px solid var(--border); border-radius:14px; width:100%; max-width:380px;
+  padding:18px; box-shadow:0 20px 60px rgba(0,0,0,0.5); max-height:88vh; overflow-y:auto;
+}
+.mod-zlyttya .card-top{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px; }
+.mod-zlyttya .machine-name{ font-size:18px; font-weight:700; display:flex; align-items:center; gap:8px; }
+.mod-zlyttya .status-chip{ font-size:10px; text-transform:uppercase; letter-spacing:0.6px; padding:3px 8px; border-radius:20px; font-weight:700; }
+.mod-zlyttya .state-ok .status-chip{ background:rgba(61,220,132,0.12); color:var(--ok); }
+.mod-zlyttya .state-warn .status-chip{ background:rgba(255,179,71,0.15); color:var(--warn); }
+.mod-zlyttya .state-danger .status-chip{ background:rgba(255,92,92,0.18); color:var(--danger); }
+.mod-zlyttya .state-done .status-chip{ background:rgba(61,220,132,0.2); color:var(--ok); }
+ 
+.mod-zlyttya .icon-btn{
+  background:transparent; border:none; color:var(--text-dim); cursor:pointer; font-size:16px;
+  padding:4px 8px; border-radius:6px; line-height:1; transition:background .15s, color .15s;
+}
+.mod-zlyttya .icon-btn:hover{ background:rgba(255,92,92,0.12); color:var(--danger); }
+ 
+.mod-zlyttya .countdown{ font-family:var(--mono); font-size:34px; font-weight:700; letter-spacing:1px; margin-bottom:4px; }
+.mod-zlyttya .state-warn .countdown{ color:var(--warn); }
+.mod-zlyttya .state-danger .countdown{ color:var(--danger); }
+.mod-zlyttya .state-done .countdown{ color:var(--ok); }
+.mod-zlyttya .countdown-label{ font-size:11px; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.8px; margin-bottom:16px; }
+ 
+.mod-zlyttya .stat-row{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
+.mod-zlyttya .stat-box{ background:var(--panel-2); border:1px solid var(--border); border-radius:8px; padding:8px 10px; }
+.mod-zlyttya .stat-box .v{ font-family:var(--mono); font-size:16px; font-weight:600; }
+.mod-zlyttya .stat-box .l{ font-size:10.5px; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.4px; margin-top:2px; }
+ 
+.mod-zlyttya .finish-time{ font-size:13px; color:var(--text-dim); border-top:1px solid var(--border); padding-top:12px; display:flex; justify-content:space-between; }
+.mod-zlyttya .finish-time b{ color:var(--text); font-family:var(--mono); font-weight:600; }
+ 
+.mod-zlyttya .progress-bar{ height:5px; background:var(--panel-2); border-radius:3px; overflow:hidden; margin:12px 0; }
+.mod-zlyttya .progress-bar-fill{ height:100%; background:linear-gradient(90deg, var(--accent), var(--ok)); transition:width .5s ease; }
+.mod-zlyttya .state-danger .progress-bar-fill{ background:var(--danger); }
+.mod-zlyttya .state-done .progress-bar-fill{ background:var(--ok); }
+ 
+.mod-zlyttya .meta-note{ font-size:12px; color:var(--text-dim); margin-top:8px; display:flex; gap:6px; align-items:center; }
+ 
+.mod-zlyttya .detail-delete-row{ margin-top:16px; padding-top:14px; border-top:1px solid var(--border); }
+.mod-zlyttya .detail-delete-row .btn{ width:100%; }
+ 
+.mod-zlyttya.calc-overlay{
+  display:none; position:fixed; inset:0; background:rgba(8, 10, 14, 0.7); backdrop-filter:blur(2px);
+  z-index:120; align-items:center; justify-content:center; padding:16px;
+}
+.mod-zlyttya.calc-overlay.open{ display:flex; }
+.mod-zlyttya .calc-modal{
+  background:var(--panel); border:1px solid var(--border); border-radius:14px; width:100%; max-width:340px;
+  padding:18px; box-shadow:0 20px 60px rgba(0,0,0,0.5);
+}
+.mod-zlyttya .calc-modal-head{ display:flex; justify-content:space-between; align-items:center; font-size:14px; font-weight:600; margin-bottom:16px; }
+.mod-zlyttya .calc-body .field{ margin-bottom:12px; }
+.mod-zlyttya .calc-result{
+  background:var(--panel-2); border:1px solid var(--accent-dim); border-radius:8px; padding:10px 12px;
+  display:flex; justify-content:space-between; align-items:center; margin-top:8px;
+}
+.mod-zlyttya .calc-result span{ font-size:12px; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.6px; }
+.mod-zlyttya .calc-result b{ font-family:var(--mono); font-size:22px; color:var(--accent); }
+.mod-zlyttya .calc-modal-actions{ display:flex; gap:10px; margin-top:16px; }
+.mod-zlyttya .calc-modal-actions .btn{ flex:1; }
+ 
+@media (max-width:480px){
+  .mod-zlyttya .countdown{ font-size:26px; }
+  .mod-zlyttya .form-grid{ grid-template-columns:1fr 1fr; }
+  .mod-zlyttya .cards{ grid-template-columns:1fr 1fr; gap:8px; }
+}
+ 
+/* ======================= MODULE: ТРЕКЕР ЗАЯВОК/ЕТИКЕТОК (tracker) ======================= */
+.mod-tracker .toolbar{ display:flex; gap:8px; margin-bottom:14px; }
+.mod-tracker .btn{
+  appearance:none; border:1px solid var(--border); background:var(--surface-2); color:var(--text);
+  padding:10px 14px; border-radius:8px; font-size:13.5px; font-weight:600; cursor:pointer;
+}
+.mod-tracker .btn:active{ background:var(--surface-3); }
+.mod-tracker .btn-primary{ background:var(--amber); color:#1a1400; border-color:var(--amber); flex:1; }
+.mod-tracker .btn-primary:active{ background:#d6941f; }
+.mod-tracker .btn-danger{ color:var(--red); border-color:var(--amber-dim); }
+.mod-tracker .btn-ghost{ background:transparent; }
+.mod-tracker .btn-block{ width:100%; }
+.mod-tracker .btn-sm{ padding:6px 10px; font-size:12px; border-radius:6px; }
+ 
+.mod-tracker .empty{
+  text-align:center; color:var(--text-dim); padding:50px 20px; font-size:13.5px; line-height:1.6;
+  border:1px dashed var(--border); border-radius:var(--radius);
+}
+ 
+.mod-tracker .row{
+  display:flex; align-items:center; gap:10px;
+  background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--text-dim);
+  border-radius:8px; padding:11px 12px; margin-bottom:8px; cursor:pointer;
+}
+.mod-tracker .row.matched{ border-left-color:var(--green); }
+.mod-tracker .row.warn{ border-left-color:var(--red); }
+.mod-tracker .row:active{ background:var(--surface-2); }
+.mod-tracker .led{ width:9px; height:9px; border-radius:50%; flex:none; background:var(--text-dim); }
+.mod-tracker .row.matched .led{ background:var(--green); box-shadow:0 0 6px 1px rgba(56,201,138,.65); animation:tr-pulse 2.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce){ .mod-tracker .row.matched .led{ animation:none; } }
+@keyframes tr-pulse{ 0%,100%{ opacity:1; } 50%{ opacity:.45; } }
+.mod-tracker .row-main{ flex:1; min-width:0; }
+.mod-tracker .row-line1{ display:flex; justify-content:space-between; gap:8px; font-family:var(--mono); font-size:13px; color:var(--text); }
+.mod-tracker .row-line2{ display:flex; justify-content:space-between; gap:8px; margin-top:3px; font-size:11.5px; color:var(--text-muted); }
+.mod-tracker .row-line2 .code{ font-family:var(--mono); color:var(--amber); font-size:12px; }
+.mod-tracker .row-line2 .missing{ color:var(--red); }
+.mod-tracker .machine-badge{
+  font-family:var(--mono); font-size:11px; font-weight:700; padding:2px 6px; border-radius:5px;
+  background:var(--surface-3); color:var(--text-muted); border:1px solid var(--border); white-space:nowrap;
+}
+.mod-tracker .row.matched .machine-badge{ color:var(--green); border-color:var(--green-dim); background:rgba(56,201,138,.08); }
+ 
+.mod-tracker .label-row .code-main{ font-family:var(--mono); font-size:15px; font-weight:600; letter-spacing:.02em; }
+.mod-tracker .label-matches{ display:flex; gap:4px; flex-wrap:wrap; margin-top:4px; }
+.mod-tracker .label-matches .machine-badge{ color:var(--green); border-color:var(--green-dim); background:rgba(56,201,138,.08); }
+ 
+.mod-tracker .row-actions{ display:flex; gap:6px; }
+.mod-tracker .icon-btn{ background:transparent; border:none; color:var(--text-dim); font-size:16px; padding:4px 6px; cursor:pointer; line-height:1; }
+.mod-tracker .icon-btn:active{ color:var(--red); }
+ 
+.mod-tracker.overlay{
+  position:fixed; inset:0; background:rgba(6,7,8,.72); display:none; align-items:flex-end; justify-content:center; z-index:100;
+}
+.mod-tracker.overlay.open{ display:flex; }
+.mod-tracker .modal{
+  background:var(--surface); width:100%; max-width:640px; max-height:92vh; overflow-y:auto;
+  border-radius:16px 16px 0 0; border:1px solid var(--border); border-bottom:none; padding:18px 16px 24px 16px;
+  animation:tr-slideup .18s ease-out;
+}
+@keyframes tr-slideup{ from{ transform:translateY(16px); opacity:.6; } to{ transform:translateY(0); opacity:1; } }
+.mod-tracker .modal h2{ font-size:15px; margin:0 0 14px 0; color:var(--text); letter-spacing:.02em; }
+.mod-tracker .modal h2 .sub{ display:block; font-size:11.5px; color:var(--text-dim); font-weight:400; margin-top:2px; }
+.mod-tracker .field{ margin-bottom:12px; }
+.mod-tracker .field label{ display:block; font-size:11.5px; color:var(--text-muted); margin-bottom:5px; text-transform:uppercase; letter-spacing:.04em; }
+.mod-tracker .field input[type=text],.mod-tracker .field input[type=date],.mod-tracker .field select,.mod-tracker .field textarea{
+  width:100%; background:var(--surface-2); border:1px solid var(--border); color:var(--text);
+  padding:10px 11px; border-radius:8px; font-size:14px;
+}
+.mod-tracker .field textarea{ min-height:110px; resize:vertical; font-family:var(--mono); font-size:12.5px; line-height:1.5; }
+.mod-tracker .field select{
+  appearance:none;
+  background-image:linear-gradient(45deg,transparent 50%,var(--text-dim) 50%),linear-gradient(135deg,var(--text-dim) 50%,transparent 50%);
+  background-position:calc(100% - 18px) center,calc(100% - 13px) center; background-size:5px 5px,5px 5px; background-repeat:no-repeat;
+}
+.mod-tracker .row2{ display:flex; gap:8px; }
+.mod-tracker .row2 .field{ flex:1; }
+ 
+.mod-tracker .method-grid{ display:flex; gap:8px; margin-bottom:14px; }
+.mod-tracker .method-btn{
+  flex:1; background:var(--surface-2); border:1px solid var(--border); border-radius:10px; padding:14px 6px;
+  text-align:center; color:var(--text-muted); font-size:12px; font-weight:600; cursor:pointer;
+}
+.mod-tracker .method-btn .ic{ display:block; font-size:20px; margin-bottom:5px; }
+.mod-tracker .method-btn.active{ border-color:var(--amber); color:var(--amber); background:rgba(242,169,59,.07); }
+ 
+.mod-tracker .thumbs{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px; }
+.mod-tracker .thumb{ position:relative; width:64px; height:64px; border-radius:8px; overflow:hidden; border:1px solid var(--border); }
+.mod-tracker .thumb img{ width:100%; height:100%; object-fit:cover; display:block; }
+.mod-tracker .thumb .rm{ position:absolute; top:2px; right:2px; background:rgba(0,0,0,.65); color:#fff; border:none; border-radius:50%; width:18px; height:18px; font-size:11px; line-height:1; cursor:pointer; }
+ 
+.mod-tracker .divider{ display:flex; align-items:center; gap:10px; margin:14px 0; color:var(--text-dim); font-size:11px; text-transform:uppercase; letter-spacing:.06em; }
+.mod-tracker .divider::before,.mod-tracker .divider::after{ content:""; flex:1; height:1px; background:var(--border); }
+ 
+.mod-tracker .status-line{ font-size:12.5px; color:var(--text-muted); margin:6px 0 12px 0; min-height:16px; }
+.mod-tracker .status-line.err{ color:var(--red); }
+.mod-tracker .status-line.ok{ color:var(--green); }
+ 
+.mod-tracker .review-card{ background:var(--surface-2); border:1px solid var(--border); border-radius:10px; padding:12px; margin-bottom:10px; }
+.mod-tracker .review-card .rc-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+.mod-tracker .review-card .rc-head span{ font-size:11px; color:var(--text-dim); font-family:var(--mono); }
+.mod-tracker .code-chip{
+  display:inline-block; background:var(--surface-3); border:1px solid var(--border); color:var(--amber);
+  font-family:var(--mono); font-size:13px; padding:6px 10px; border-radius:7px; margin:0 6px 6px 0;
+}
+.mod-tracker .code-chip .rm{ background:none; border:none; color:var(--text-dim); margin-left:6px; cursor:pointer; font-size:12px; }
+ 
+.mod-tracker .modal-actions{ display:flex; gap:8px; margin-top:16px; }
+ 
+.mod-tracker .apikey-row{ display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+.mod-tracker .apikey-row input[type=radio]{ width:16px; height:16px; flex:none; accent-color:var(--amber); }
+.mod-tracker .apikey-row .ak-label{ font-size:11px; color:var(--text-dim); width:44px; flex:none; font-family:var(--mono); }
+.mod-tracker .apikey-row input[type=text]{
+  flex:1; background:var(--surface-2); border:1px solid var(--border); color:var(--text);
+  padding:9px 10px; border-radius:7px; font-size:12.5px; font-family:var(--mono);
+}
+.mod-tracker .apikey-row.active-slot input[type=text]{ border-color:var(--amber); }
+.mod-tracker .apikey-row.active-slot .ak-label{ color:var(--amber); }
+.mod-tracker .settings-list{ margin-top:8px; }
+.mod-tracker .machine-chip{
+  display:inline-flex; align-items:center; gap:6px; background:var(--surface-2); border:1px solid var(--border);
+  font-family:var(--mono); font-size:12.5px; padding:6px 8px 6px 10px; border-radius:7px; margin:0 6px 6px 0;
+}
+.mod-tracker .machine-chip button{ background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:13px; }
+.mod-tracker .machine-wrap{ display:flex; flex-wrap:wrap; }
+.mod-tracker .hint{ font-size:11.5px; color:var(--text-dim); margin-top:6px; line-height:1.5; }
 </style>
 </head>
 <body>
-
-<header>
-  <h1><span class="dot"></span> Контроль злиттів</h1>
-  <div class="clock" id="liveClock">—</div>
-</header>
-
-<main>
-  <div class="toolbar">
-    <button class="btn btn-primary btn-add-machine" id="openAddPanelBtn">+ Добавить машину</button>
-  </div>
-
-  <div id="emptyState" class="empty-state" style="display:none;">
-    <div class="big">🪣</div>
-    Пока нет машин под контролем.<br>Добавьте первую машину кнопкой выше.
-  </div>
-
-  <section class="cards" id="cardsWrap"></section>
-</main>
-
-<!-- Форма добавления машины -->
-<div id="addOverlay" class="detail-overlay">
+<div class="app">
+ 
+  <header class="top">
+    <div class="brand">
+      <div class="lamp" id="headerLamp"></div>
+      <h1>Виробництво</h1>
+      <span id="clock">—</span>
+    </div>
+    <div class="tabs">
+      <button class="tab active" data-tab="zlyttya">Злиття</button>
+      <button class="tab" data-tab="orders">Заявки</button>
+      <button class="tab" data-tab="labels">Етикетки</button>
+      <button class="tab" data-tab="settings">Налаштування</button>
+    </div>
+  </header>
+ 
+  <main>
+    <!-- ======================= ЗЛИТТЯ ======================= -->
+    <section id="view-zlyttya" class="mod-zlyttya active">
+      <div class="toolbar">
+        <button class="btn btn-primary btn-add-machine" id="openAddPanelBtn">+ Добавить машину</button>
+      </div>
+      <div id="emptyState" class="empty-state" style="display:none;">
+        <div class="big">🪣</div>
+        Пока нет машин под контролем.<br>Добавьте первую машину кнопкой выше.
+      </div>
+      <section class="cards" id="cardsWrap"></section>
+    </section>
+ 
+    <!-- ======================= ЗАЯВКИ ======================= -->
+    <section id="view-orders" class="mod-tracker">
+      <div class="toolbar">
+        <button class="btn btn-primary" id="btnAddOrder">+ Додати заявку</button>
+        <button class="btn btn-danger" id="btnClearOrders">Очистити все</button>
+      </div>
+      <div id="ordersList"></div>
+    </section>
+ 
+    <!-- ======================= ЕТИКЕТКИ ======================= -->
+    <section id="view-labels" class="mod-tracker">
+      <div class="toolbar">
+        <button class="btn btn-primary" id="btnAddLabels">+ Додати етикетки</button>
+        <button class="btn btn-danger" id="btnClearLabels">Очистити все</button>
+      </div>
+      <div id="labelsList"></div>
+    </section>
+ 
+    <!-- ======================= НАЛАШТУВАННЯ ======================= -->
+    <section id="view-settings" class="mod-tracker">
+      <div class="field">
+        <label>API ключі Gemini (розпізнавання фото) · перемикання вручну</label>
+        <div id="apiKeysWrap"></div>
+        <div class="status-line" id="apiKeysStatus">Оберіть точкою активний ключ. Модель: gemini-3.5-flash-lite.</div>
+        <div class="hint">Ключі зберігаються тільки на цьому пристрої і не потрапляють у спільну базу.</div>
+      </div>
+      <div class="field">
+        <label>Додати номер машини (для заявок/етикеток)</label>
+        <div class="row2">
+          <input type="text" id="newMachineInput" placeholder="напр. J124W">
+          <button class="btn" id="btnAddMachine" style="flex:none;">Додати</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>Список машин (<span id="machineCount">0</span>)</label>
+        <div class="machine-wrap settings-list" id="machinesList"></div>
+      </div>
+      <button class="btn btn-danger btn-block" id="btnResetMachines">Скинути список машин до типового</button>
+    </section>
+  </main>
+ 
+  <footer>Дані спільні для всіх, хто відкриває це посилання, і оновлюються автоматично в реальному часі.</footer>
+</div>
+ 
+<!-- ======================= МОДАЛКИ: ЗЛИТТЯ ======================= -->
+<div id="addOverlay" class="mod-zlyttya detail-overlay">
   <div class="detail-modal add-modal">
     <div class="calc-modal-head">
       <span>Добавить машину</span>
@@ -645,10 +504,8 @@
     </div>
   </div>
 </div>
-
-
-<!-- Калькулятор палеты -->
-<div id="calcOverlay" class="calc-overlay">
+ 
+<div id="calcOverlay" class="mod-zlyttya calc-overlay">
   <div class="calc-modal">
     <div class="calc-modal-head">
       <span>🖲️ Калькулятор палеты</span>
@@ -678,108 +535,184 @@
     </div>
   </div>
 </div>
-
-<!-- Детали машины -->
-<div id="detailOverlay" class="detail-overlay">
+ 
+<div id="detailOverlay" class="mod-zlyttya detail-overlay">
   <div class="detail-modal" id="detailModal"></div>
 </div>
-
-<footer>Данные общие для всех, кто открывает эту ссылку, и обновляются автоматически.</footer>
-
+ 
+<!-- ======================= МОДАЛКИ: ТРЕКЕР ======================= -->
+<div class="mod-tracker overlay" id="overlayOrderDetail">
+  <div class="modal">
+    <h2>Заявка<span class="sub" id="odSub"></span></h2>
+    <div class="row2">
+      <div class="field"><label>Дата</label><input type="date" id="odDate"></div>
+      <div class="field"><label>Машина</label><select id="odMachine"></select></div>
+    </div>
+    <div class="field"><label>Numer zlecenia</label><input type="text" id="odNumer"></div>
+    <div class="field"><label>Код етикетки</label><input type="text" id="odLabel"></div>
+    <div class="field"><label>Повний текст заявки</label><textarea id="odFullText"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn btn-danger" id="odDelete">Видалити</button>
+      <button class="btn btn-ghost" id="odCancel">Закрити</button>
+      <button class="btn btn-primary" id="odSave">Зберегти</button>
+    </div>
+  </div>
+</div>
+ 
+<div class="mod-tracker overlay" id="overlayAddOrder">
+  <div class="modal">
+    <h2>Додати заявку<span class="sub">Текст або фото заявки з комп'ютера/принтера</span></h2>
+    <div class="field">
+      <label>Вставити текст заявки</label>
+      <textarea id="aoText" placeholder="Встав текст заявки(-ок) сюди..."></textarea>
+    </div>
+    <div class="divider">або фото</div>
+    <div class="method-grid">
+      <label class="method-btn" for="aoGallery"><span class="ic">🖼️</span>З галереї</label>
+      <label class="method-btn" for="aoCamera"><span class="ic">📷</span>Зробити фото</label>
+    </div>
+    <input type="file" id="aoGallery" accept="image/*" multiple style="display:none;">
+    <input type="file" id="aoCamera" accept="image/*" capture="environment" style="display:none;">
+    <div class="thumbs" id="aoThumbs"></div>
+    <div class="status-line" id="aoStatus"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="aoCancel">Скасувати</button>
+      <button class="btn btn-primary" id="aoRecognize">Розпізнати</button>
+    </div>
+    <div id="aoReviewWrap" style="display:none;">
+      <div class="divider">Знайдені заявки</div>
+      <div id="aoReviewList"></div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="aoBack">Назад</button>
+        <button class="btn btn-primary" id="aoSaveAll">Зберегти всі</button>
+      </div>
+    </div>
+  </div>
+</div>
+ 
+<div class="mod-tracker overlay" id="overlayAddLabels">
+  <div class="modal">
+    <h2>Додати етикетки<span class="sub">Коди з коробок / список кодів</span></h2>
+    <div class="field">
+      <label>Вставити список кодів</label>
+      <textarea id="alText" placeholder="напр. (G076533) (G063984) ... або E077433, 073042"></textarea>
+    </div>
+    <div class="divider">або фото</div>
+    <div class="method-grid">
+      <label class="method-btn" for="alGallery"><span class="ic">🖼️</span>З галереї</label>
+      <label class="method-btn" for="alCamera"><span class="ic">📷</span>Зробити фото</label>
+    </div>
+    <input type="file" id="alGallery" accept="image/*" multiple style="display:none;">
+    <input type="file" id="alCamera" accept="image/*" capture="environment" style="display:none;">
+    <div class="thumbs" id="alThumbs"></div>
+    <div class="status-line" id="alStatus"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="alCancel">Скасувати</button>
+      <button class="btn btn-primary" id="alRecognize">Розпізнати</button>
+    </div>
+    <div id="alReviewWrap" style="display:none;">
+      <div class="divider">Знайдені коди</div>
+      <div id="alReviewList"></div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="alBack">Назад</button>
+        <button class="btn btn-primary" id="alSaveAll">Зберегти всі</button>
+      </div>
+    </div>
+  </div>
+</div>
+ 
 <script>
+/* ======================= ЗАГАЛЬНА ІНІЦІАЛІЗАЦІЯ (спільна для обох модулів) ======================= */
+if (window.Telegram && window.Telegram.WebApp) {
+  const tg = window.Telegram.WebApp;
+  tg.ready();
+  tg.expand();
+  if (tg.disableVerticalSwipes) tg.disableVerticalSwipes();
+  if (tg.setHeaderColor) { try { tg.setHeaderColor('#14171a'); } catch (e) {} }
+  if (tg.setBackgroundColor) { try { tg.setBackgroundColor('#14171a'); } catch (e) {} }
+}
+ 
+const SUPABASE_URL = 'https://scwtoxypbdmlwdoifvmp.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNjd3RveHlwYmRtbHdkb2lmdm1wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0NDAwMjcsImV4cCI6MjEwMjAxNjAyN30.z0xH6w7MY4afcB-YcgbpCWbs9OiBFODg0r_BGp7JN7g';
+ 
+let sb = null;
+if (window.supabase) {
+  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+} else {
+  document.addEventListener('DOMContentLoaded', function () {
+    alert('Не вдалося завантажити бібліотеку зв\\'язку з сервером. Перевірте інтернет і перезавантажте сторінку.');
+  });
+}
+ 
+// Обидва модулі використовують ОДНУ таблицю Supabase ("machines"),
+// але кожен запис має власне поле data.kind, яке відрізняє:
+//  - 'zlyttya'              -> картки контролю злиття (модуль "Злиття")
+//  - 'order'                -> заявка (модуль "Заявки")
+//  - 'label'                -> код етикетки (модуль "Етикетки")
+//  - 'tracker_machine_list' -> один запис зі списком машин для заявок/етикеток
+// Записи, зроблені до цього оновлення, не мають поля kind і трактуються як 'zlyttya'
+// (щоб старі дані з контролю злиття лишились на місці).
+const TABLE = 'machines';
+ 
+/* ======================= ТАБИ ======================= */
+document.querySelectorAll(".tab").forEach(t => {
+  t.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+    document.querySelectorAll("main section").forEach(x=>x.classList.remove("active"));
+    t.classList.add("active");
+    document.getElementById("view-" + t.dataset.tab).classList.add("active");
+  });
+});
+ 
+/* ======================= МОДУЛЬ "ЗЛИТТЯ" ======================= */
 (function () {
-  // ---- интеграция с Telegram Mini App ----
-  if (window.Telegram && window.Telegram.WebApp) {
-    const tg = window.Telegram.WebApp;
-    tg.ready();
-    tg.expand();
-    if (tg.disableVerticalSwipes) tg.disableVerticalSwipes();
-    if (tg.setHeaderColor) { try { tg.setHeaderColor('#12161c'); } catch (e) {} }
-    if (tg.setBackgroundColor) { try { tg.setBackgroundColor('#12161c'); } catch (e) {} }
-  }
-
-  const SUPABASE_URL = 'https://scwtoxypbdmlwdoifvmp.supabase.co';
-  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNjd3RveHlwYmRtbHdkb2lmdm1wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0NDAwMjcsImV4cCI6MjEwMjAxNjAyN30.z0xH6w7MY4afcB-YcgbpCWbs9OiBFODg0r_BGp7JN7g';
-
-  if (!window.supabase) {
-    document.addEventListener('DOMContentLoaded', function () {
-      const err = document.getElementById('formError');
-      if (err) err.textContent = 'Не удалось загрузить библиотеку связи с сервером. Проверьте интернет и перезагрузите страницу.';
-    });
-    throw new Error('Supabase SDK не загружен');
-  }
-
-  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  const TABLE = 'machines';
-
-  // Локальный кэш — чтобы интерфейс не мигал пустотой, пока идёт запрос к серверу.
+  if (!sb) return;
+ 
   const LOCAL_CACHE_KEY = 'zlittya_machines_cache_v1';
-
+ 
   function loadCachedMachines() {
     try {
       const raw = localStorage.getItem(LOCAL_CACHE_KEY);
       return raw ? JSON.parse(raw) : [];
-    } catch (e) {
-      return [];
-    }
+    } catch (e) { return []; }
   }
-
   function saveCachedMachines(list) {
-    try {
-      localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(list));
-    } catch (e) {}
+    try { localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(list)); } catch (e) {}
   }
-
-  // Приводим строку из Supabase (id + data-jsonb) к плоскому объекту машины,
-  // как его ожидает остальной код приложения.
+ 
   function rowToMachine(row) {
     return Object.assign({}, row.data, { id: row.id });
   }
-
+ 
   async function fetchMachinesFromServer() {
     const { data, error } = await sb.from(TABLE).select('id, data').order('id', { ascending: true });
-    if (error) {
-      console.error('Ошибка загрузки из Supabase', error);
-      return null;
-    }
-    return data.map(rowToMachine);
+    if (error) { console.error('Ошибка загрузки из Supabase', error); return null; }
+    // Показуємо лише записи модуля "Злиття": без kind (старі записи) або kind === 'zlyttya'.
+    return data.map(rowToMachine).filter(m => !m.kind || m.kind === 'zlyttya');
   }
-
+ 
   async function insertMachineOnServer(machineData) {
-    const { data, error } = await sb.from(TABLE).insert({ data: machineData }).select('id, data').single();
-    if (error) {
-      console.error('Ошибка добавления в Supabase', error);
-      return null;
-    }
+    const payload = Object.assign({ kind: 'zlyttya' }, machineData);
+    const { data, error } = await sb.from(TABLE).insert({ data: payload }).select('id, data').single();
+    if (error) { console.error('Ошибка добавления в Supabase', error); return null; }
     return rowToMachine(data);
   }
-
+ 
   async function deleteMachineOnServer(id) {
     const { error } = await sb.from(TABLE).delete().eq('id', id);
-    if (error) {
-      console.error('Ошибка удаления в Supabase', error);
-      return false;
-    }
+    if (error) { console.error('Ошибка удаления в Supabase', error); return false; }
     return true;
   }
-
+ 
   let machines = loadCachedMachines();
   let pendingDeleteId = null;
-  let isOnline = true;
-
-  // ---- helpers ----
+ 
   function parseDecimal(str) {
     if (typeof str !== 'string') return NaN;
-    const normalized = str.trim().replace(',', '.');
-    return parseFloat(normalized);
+    return parseFloat(str.trim().replace(',', '.'));
   }
-
-  function fmtNum(n) {
-    return new Intl.NumberFormat('ru-RU').format(Math.round(n));
-  }
-
+  function fmtNum(n) { return new Intl.NumberFormat('ru-RU').format(Math.round(n)); }
   function pad(n) { return n < 10 ? '0' + n : '' + n; }
-
   function fmtDuration(totalSeconds) {
     if (totalSeconds <= 0) return '00:00:00';
     const s = Math.floor(totalSeconds);
@@ -787,64 +720,34 @@
     const hrs = Math.floor((s % 86400) / 3600);
     const mins = Math.floor((s % 3600) / 60);
     const secs = s % 60;
-    if (days > 0) {
-      return `${days}д ${pad(hrs)}:${pad(mins)}:${pad(secs)}`;
-    }
+    if (days > 0) return `${days}д ${pad(hrs)}:${pad(mins)}:${pad(secs)}`;
     return `${pad(hrs)}:${pad(mins)}:${pad(secs)}`;
   }
-
   function fmtDateTime(date) {
-    const dd = pad(date.getDate());
-    const mm = pad(date.getMonth() + 1);
-    const yy = date.getFullYear();
-    const hh = pad(date.getHours());
-    const mi = pad(date.getMinutes());
-    const ss = pad(date.getSeconds());
-    return `${dd}.${mm}.${yy} ${hh}:${mi}:${ss}`;
+    return `${pad(date.getDate())}.${pad(date.getMonth()+1)}.${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
   }
-
-  function fmtTimeOnly(date) {
-    const hh = pad(date.getHours());
-    const mi = pad(date.getMinutes());
-    return `${hh}:${mi}`;
-  }
-
-  // Основной расчёт:
-  // palletNum — номер ТЕКУЩЕЙ (ещё не законченной) палеты на момент ВВОДА данных.
-  // enteredAt — момент времени (мс), когда были введены/обновлены эти данные.
-  // Всё, что произошло после enteredAt, досчитывается автоматически по циклу:
-  //   прошло_секунд = (сейчас - enteredAt) / 1000
-  //   вёдер_добавилось = floor(прошло_секунд / cycle)
-  //   done_сейчас = done_на_момент_ввода + вёдер_добавилось (не больше total)
+  function fmtTimeOnly(date) { return `${pad(date.getHours())}:${pad(date.getMinutes())}`; }
+ 
   function computeMachine(m) {
     const fullPallets = Math.max(m.palletNum - 1, 0);
     const doneAtEntry = (fullPallets * m.perPallet) + m.onCurrent;
-
     const elapsedSeconds = Math.max((Date.now() - m.enteredAt) / 1000, 0);
     const producedSinceEntry = Math.floor(elapsedSeconds / m.cycle);
-
     const done = Math.min(doneAtEntry + producedSinceEntry, m.total);
     const remainingPieces = Math.max(m.total - done, 0);
-
-    // Точное время окончания фиксируется от момента ввода и больше не "плывёт":
-    // сколько секунд оставалось при вводе * цикл, от enteredAt.
     const remainingSecondsAtEntry = Math.max(m.total - doneAtEntry, 0) * m.cycle;
     const finishDate = new Date(m.enteredAt + remainingSecondsAtEntry * 1000);
-
-    // Текущий обратный отсчёт — сколько реально осталось секунд от "сейчас" до finishDate.
     const remainingSeconds = Math.max((finishDate.getTime() - Date.now()) / 1000, 0);
-
     const progress = m.total > 0 ? Math.min(done / m.total, 1) : 0;
     return { done, remainingPieces, remainingSeconds, finishDate, progress };
   }
-
+ 
   function stateFor(remainingSeconds, remainingPieces) {
     if (remainingPieces <= 0) return 'done';
-    if (remainingSeconds <= 5 * 60) return 'danger';   // менее 5 минут
-    if (remainingSeconds <= 20 * 60) return 'warn';    // менее 20 минут
+    if (remainingSeconds <= 5 * 60) return 'danger';
+    if (remainingSeconds <= 20 * 60) return 'warn';
     return 'ok';
   }
-
   function statusLabel(state) {
     switch (state) {
       case 'done': return 'Готово';
@@ -853,14 +756,19 @@
       default: return 'В работе';
     }
   }
-
-  // ---- render ----
+ 
   const cardsWrap = document.getElementById('cardsWrap');
   const emptyState = document.getElementById('emptyState');
   const detailOverlay = document.getElementById('detailOverlay');
   const detailModal = document.getElementById('detailModal');
   let openDetailId = null;
-
+ 
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+ 
   function render() {
     if (machines.length === 0) {
       emptyState.style.display = 'block';
@@ -881,22 +789,16 @@
         `;
       }).join('');
     }
-
-    if (openDetailId !== null) {
-      renderDetail();
-    }
+    if (openDetailId !== null) renderDetail();
   }
-
+ 
   function renderDetail() {
     const m = machines.find(x => String(x.id) === String(openDetailId));
-    if (!m) {
-      closeDetail();
-      return;
-    }
+    if (!m) { closeDetail(); return; }
     const calc = computeMachine(m);
     const state = stateFor(calc.remainingSeconds, calc.remainingPieces);
     const isPendingDelete = String(pendingDeleteId) === String(m.id);
-
+ 
     detailModal.className = `detail-modal state-${state}`;
     detailModal.innerHTML = `
       <div class="card-top">
@@ -905,33 +807,18 @@
         </div>
         <button class="icon-btn" data-action="close-detail" title="Закрыть">✕</button>
       </div>
-
       <div class="countdown">${fmtDuration(calc.remainingSeconds)}</div>
       <div class="countdown-label">Обратный отсчёт до конца злиття</div>
-
       <div class="progress-bar"><div class="progress-bar-fill" style="width:${(calc.progress*100).toFixed(1)}%"></div></div>
-
       <div class="stat-row">
-        <div class="stat-box">
-          <div class="v">${fmtNum(calc.remainingPieces)}</div>
-          <div class="l">Шт до конца (остаток)</div>
-        </div>
-        <div class="stat-box">
-          <div class="v">${fmtNum(calc.done)} / ${fmtNum(m.total)}</div>
-          <div class="l">Сделано / Всего</div>
-        </div>
+        <div class="stat-box"><div class="v">${fmtNum(calc.remainingPieces)}</div><div class="l">Шт до конца (остаток)</div></div>
+        <div class="stat-box"><div class="v">${fmtNum(calc.done)} / ${fmtNum(m.total)}</div><div class="l">Сделано / Всего</div></div>
       </div>
-
-      <div class="finish-time">
-        <span>Точное время конца злиття:</span>
-        <b>${fmtDateTime(calc.finishDate)}</b>
-      </div>
-
+      <div class="finish-time"><span>Точное время конца злиття:</span><b>${fmtDateTime(calc.finishDate)}</b></div>
       <div class="meta-note">Незаконч. палета №${m.palletNum} · ${m.onCurrent}/${m.perPallet} шт · цикл ${String(m.cycle).replace('.', ',')} с</div>
       ${(m.zlittyaNum || m.etiketkaNum) ? `
       <div class="meta-note">${m.zlittyaNum ? `Злиття №${m.zlittyaNum}` : ''}${m.zlittyaNum && m.etiketkaNum ? ' · ' : ''}${m.etiketkaNum ? `Етикетка №${m.etiketkaNum}` : ''}</div>
       ` : ''}
-
       <div class="detail-delete-row">
         ${isPendingDelete ? `
           <div class="confirm-delete">
@@ -941,60 +828,27 @@
               <button class="btn btn-ghost" data-action="cancel-delete" data-id="${m.id}">Отмена</button>
             </div>
           </div>
-        ` : `
-          <button class="btn btn-ghost" data-action="delete" data-id="${m.id}">Удалить машину</button>
-        `}
+        ` : `<button class="btn btn-ghost" data-action="delete" data-id="${m.id}">Удалить машину</button>`}
       </div>
     `;
   }
-
-  function openDetail(id) {
-    openDetailId = id;
-    pendingDeleteId = null;
-    renderDetail();
-    detailOverlay.classList.add('open');
-  }
-
-  function closeDetail() {
-    openDetailId = null;
-    pendingDeleteId = null;
-    detailOverlay.classList.remove('open');
-  }
-
-  function escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-  }
-
-  // ---- events ----
+ 
+  function openDetail(id) { openDetailId = id; pendingDeleteId = null; renderDetail(); detailOverlay.classList.add('open'); }
+  function closeDetail() { openDetailId = null; pendingDeleteId = null; detailOverlay.classList.remove('open'); }
+ 
   cardsWrap.addEventListener('click', function (e) {
     const tile = e.target.closest('[data-action="open-detail"]');
-    if (tile) {
-      openDetail(tile.dataset.id);
-    }
+    if (tile) openDetail(tile.dataset.id);
   });
-
+ 
   detailOverlay.addEventListener('click', function (e) {
-    if (e.target === detailOverlay) {
-      closeDetail();
-      return;
-    }
-    const closeBtn = e.target.closest('[data-action="close-detail"]');
-    if (closeBtn) {
-      closeDetail();
-      return;
-    }
+    if (e.target === detailOverlay) { closeDetail(); return; }
+    if (e.target.closest('[data-action="close-detail"]')) { closeDetail(); return; }
     const btn = e.target.closest('[data-action="delete"]');
-    if (btn) {
-      pendingDeleteId = btn.dataset.id;
-      renderDetail();
-      return;
-    }
+    if (btn) { pendingDeleteId = btn.dataset.id; renderDetail(); return; }
     const yesBtn = e.target.closest('[data-action="confirm-delete"]');
     if (yesBtn) {
       const id = yesBtn.dataset.id;
-      // Оптимистично убираем из интерфейса сразу, не дожидаясь ответа сервера.
       const backup = machines;
       machines = machines.filter(m => String(m.id) !== String(id));
       saveCachedMachines(machines);
@@ -1002,28 +856,21 @@
       render();
       deleteMachineOnServer(id).then(function (ok) {
         if (!ok) {
-          // Откатываем, если сервер не смог удалить.
           machines = backup;
           saveCachedMachines(machines);
           render();
-          showError('Не удалось удалить на сервере. Проверьте интернет.');
+          formError.textContent = 'Не удалось удалить на сервере. Проверьте интернет.';
         }
       });
       return;
     }
-    const noBtn = e.target.closest('[data-action="cancel-delete"]');
-    if (noBtn) {
-      pendingDeleteId = null;
-      renderDetail();
-      return;
-    }
+    if (e.target.closest('[data-action="cancel-delete"]')) { pendingDeleteId = null; renderDetail(); }
   });
-
+ 
   const formError = document.getElementById('formError');
   const addBtn = document.getElementById('addBtn');
   addBtn.addEventListener('click', async function () {
     formError.textContent = '';
-
     const machine = document.getElementById('f-machine').value.trim();
     const total = parseInt(document.getElementById('f-total').value, 10);
     const perPallet = parseInt(document.getElementById('f-perPallet').value, 10);
@@ -1034,80 +881,54 @@
     const etiketkaNumRaw = document.getElementById('f-etiketkaNum').value;
     const zlittyaNum = zlittyaNumRaw === '' ? null : parseInt(zlittyaNumRaw, 10);
     const etiketkaNum = etiketkaNumRaw === '' ? null : parseInt(etiketkaNumRaw, 10);
-
-    if (!machine) return showError('Укажите номер машины.');
-    if (!total || total <= 0) return showError('Укажите кол-во на злитті.');
-    if (!perPallet || perPallet <= 0) return showError('Укажите кол-во шт на палете.');
-    if (!palletNum || palletNum < 1) return showError('Укажите номер текущей (незаконченной) палеты.');
-    if (isNaN(onCurrent) || onCurrent < 0) return showError('Укажите кол-во шт на текущей палете.');
-    if (!cycle || cycle <= 0) return showError('Укажите время цикла (сек).');
-
+ 
+    if (!machine) { formError.textContent = 'Укажите номер машины.'; return; }
+    if (!total || total <= 0) { formError.textContent = 'Укажите кол-во на злитті.'; return; }
+    if (!perPallet || perPallet <= 0) { formError.textContent = 'Укажите кол-во шт на палете.'; return; }
+    if (!palletNum || palletNum < 1) { formError.textContent = 'Укажите номер текущей (незаконченной) палеты.'; return; }
+    if (isNaN(onCurrent) || onCurrent < 0) { formError.textContent = 'Укажите кол-во шт на текущей палете.'; return; }
+    if (!cycle || cycle <= 0) { formError.textContent = 'Укажите время цикла (сек).'; return; }
+ 
     const machineData = {
       machine, total, perPallet, palletNum, onCurrent, cycle,
-      zlittyaNum, etiketkaNum,
-      enteredAt: Date.now(),
-      createdAt: Date.now()
+      zlittyaNum, etiketkaNum, enteredAt: Date.now(), createdAt: Date.now()
     };
-
+ 
     addBtn.disabled = true;
     addBtn.textContent = 'Записываем…';
-
     const created = await insertMachineOnServer(machineData);
-
     addBtn.disabled = false;
     addBtn.textContent = 'Записать машину';
-
-    if (!created) {
-      showError('Не удалось сохранить на сервере. Проверьте интернет и попробуйте снова.');
-      return;
-    }
-
+ 
+    if (!created) { formError.textContent = 'Не удалось сохранить на сервере. Проверьте интернет и попробуйте снова.'; return; }
+ 
     machines.push(created);
     saveCachedMachines(machines);
     render();
     clearForm();
     closeAddPanel();
   });
-
-  function showError(msg) { formError.textContent = msg; }
-
+ 
   function clearForm() {
     ['f-machine','f-total','f-perPallet','f-palletNum','f-onCurrent','f-cycle','f-zlittyaNum','f-etiketkaNum']
       .forEach(id => document.getElementById(id).value = '');
     formError.textContent = '';
   }
-
-  // ---- модалка добавления машины ----
+ 
   const addOverlay = document.getElementById('addOverlay');
-
-  function openAddPanel() {
-    addOverlay.classList.add('open');
-    document.getElementById('f-machine').focus();
-  }
-
-  function closeAddPanel() {
-    addOverlay.classList.remove('open');
-  }
-
+  function openAddPanel() { addOverlay.classList.add('open'); document.getElementById('f-machine').focus(); }
+  function closeAddPanel() { addOverlay.classList.remove('open'); }
+ 
   document.getElementById('openAddPanelBtn').addEventListener('click', openAddPanel);
-  document.getElementById('addPanelClose').addEventListener('click', function () {
-    clearForm();
-    closeAddPanel();
-  });
-  addOverlay.addEventListener('click', function (e) {
-    if (e.target === addOverlay) {
-      clearForm();
-      closeAddPanel();
-    }
-  });
-
-  // ---- калькулятор палеты ----
+  document.getElementById('addPanelClose').addEventListener('click', function () { clearForm(); closeAddPanel(); });
+  addOverlay.addEventListener('click', function (e) { if (e.target === addOverlay) { clearForm(); closeAddPanel(); } });
+ 
   const calcOverlay = document.getElementById('calcOverlay');
   const calcInStack = document.getElementById('calc-inStack');
   const calcStacks = document.getElementById('calc-stacks');
   const calcExtra = document.getElementById('calc-extra');
   const calcResultVal = document.getElementById('calcResultVal');
-
+ 
   function calcCompute() {
     const inStack = parseInt(calcInStack.value, 10) || 0;
     const stacks = parseInt(calcStacks.value, 10) || 0;
@@ -1116,70 +937,682 @@
     calcResultVal.textContent = fmtNum(result);
     return result;
   }
-
   function openCalc() {
-    calcInStack.value = '';
-    calcStacks.value = '';
-    calcExtra.value = '';
+    calcInStack.value = ''; calcStacks.value = ''; calcExtra.value = '';
     calcResultVal.textContent = '0';
     calcOverlay.classList.add('open');
     calcInStack.focus();
   }
-
-  function closeCalc() {
-    calcOverlay.classList.remove('open');
-  }
-
+  function closeCalc() { calcOverlay.classList.remove('open'); }
+ 
   document.getElementById('calcTrigger').addEventListener('click', openCalc);
   document.getElementById('calcClose').addEventListener('click', closeCalc);
   document.getElementById('calcCancel').addEventListener('click', closeCalc);
-  calcOverlay.addEventListener('click', function (e) {
-    if (e.target === calcOverlay) closeCalc();
-  });
-  [calcInStack, calcStacks, calcExtra].forEach(el => {
-    el.addEventListener('input', calcCompute);
-  });
-
+  calcOverlay.addEventListener('click', function (e) { if (e.target === calcOverlay) closeCalc(); });
+  [calcInStack, calcStacks, calcExtra].forEach(el => el.addEventListener('input', calcCompute));
   document.getElementById('calcApply').addEventListener('click', function () {
-    const result = calcCompute();
-    document.getElementById('f-onCurrent').value = result;
+    document.getElementById('f-onCurrent').value = calcCompute();
     closeCalc();
   });
-
-  // ---- live clock ----
+ 
   function tickClock() {
-    document.getElementById('liveClock').textContent = fmtDateTime(new Date());
+    document.getElementById('clock').textContent = fmtDateTime(new Date());
   }
-
-  // ---- main loop: обновляем расчёты каждую секунду ----
-  setInterval(function () {
-    tickClock();
-    render();
-  }, 1000);
-
+ 
+  setInterval(function () { tickClock(); render(); }, 1000);
   tickClock();
-  render(); // сразу показываем кэш, пока грузим свежие данные с сервера
-
-  // ---- загрузка актуальных данных с сервера + подписка на изменения в реальном времени ----
+  render();
+ 
   async function syncFromServer() {
     const fresh = await fetchMachinesFromServer();
-    if (fresh !== null) {
-      machines = fresh;
-      saveCachedMachines(machines);
-      render();
+    if (fresh !== null) { machines = fresh; saveCachedMachines(machines); render(); }
+  }
+  syncFromServer();
+ 
+  sb.channel('zlyttya-changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: TABLE }, function () { syncFromServer(); })
+    .subscribe();
+})();
+ 
+/* ======================= МОДУЛЬ "ТРЕКЕР ЗАЯВОК/ЕТИКЕТОК" ======================= */
+(function(){
+  "use strict";
+  if (!sb) return;
+ 
+  const DEFAULT_MACHINES = "J119W S104W S101P S103W J118P J117P S107W J115P J122P J116P J120W S111W S108W J121W S99W J126W S110W S105P S114P S112P S97W S96W V93W S109W S100W S98W J124W J123W V91W V95P S126W S63W S106 J130 J127 S128 J129 S125 S113".split(/\s+/);
+ 
+  const LS_APIKEYS = "flt_gemini_keys_v1";
+  const LS_ACTIVE_KEY = "flt_gemini_active_v1";
+  const GEMINI_MODEL = "gemini-3.5-flash-lite";
+ 
+  function loadApiKeys(){
+    const raw = JSON.parse(localStorage.getItem(LS_APIKEYS) || "null") || [];
+    const arr = raw.slice(0,5);
+    while(arr.length < 5) arr.push("");
+    return arr;
+  }
+ 
+  const state = {
+    orders: [],
+    labels: [],
+    machines: DEFAULT_MACHINES.slice(),
+    apiKeys: loadApiKeys(),
+    activeKeyIndex: Number(localStorage.getItem(LS_ACTIVE_KEY) || "0"),
+    machineListRowId: null
+  };
+ 
+  function saveApiKeys(){ localStorage.setItem(LS_APIKEYS, JSON.stringify(state.apiKeys)); }
+  function saveActiveKey(){ localStorage.setItem(LS_ACTIVE_KEY, String(state.activeKeyIndex)); }
+  function getActiveApiKey(){ const k = state.apiKeys[state.activeKeyIndex]; return k ? k.trim() : ""; }
+ 
+  // ---------- Supabase: спільна таблиця, окремі "kind" ----------
+  async function fetchTrackerRows(){
+    const { data, error } = await sb.from(TABLE).select('id, data').order('id', { ascending: true });
+    if (error) { console.error('Ошибка загрузки трекера из Supabase', error); return null; }
+    return data;
+  }
+  async function insertTrackerRow(kind, payload){
+    const { data, error } = await sb.from(TABLE).insert({ data: Object.assign({ kind }, payload) }).select('id, data').single();
+    if (error) { console.error('Ошибка добавления в Supabase', error); return null; }
+    return data;
+  }
+  async function updateTrackerRow(id, kind, payload){
+    const { data, error } = await sb.from(TABLE).update({ data: Object.assign({ kind }, payload) }).eq('id', id).select('id, data').single();
+    if (error) { console.error('Ошибка обновления в Supabase', error); return null; }
+    return data;
+  }
+  async function deleteTrackerRow(id){
+    const { error } = await sb.from(TABLE).delete().eq('id', id);
+    if (error) { console.error('Ошибка удаления в Supabase', error); return false; }
+    return true;
+  }
+ 
+  async function syncTrackerFromServer(){
+    const rows = await fetchTrackerRows();
+    if (rows === null) return;
+ 
+    const orderRows = rows.filter(r => r.data && r.data.kind === 'order');
+    const labelRows = rows.filter(r => r.data && r.data.kind === 'label');
+    const listRows = rows.filter(r => r.data && r.data.kind === 'tracker_machine_list');
+ 
+    state.orders = orderRows.map(r => ({
+      id: r.id, date: r.data.date || null, machine: r.data.machine || null,
+      numerZlecenia: r.data.numerZlecenia || "", labelCode: r.data.labelCode || "",
+      fullText: r.data.fullText || ""
+    }));
+    state.labels = labelRows.map(r => ({
+      id: r.id, raw: r.data.raw, digits: r.data.digits, matchedMachines: []
+    }));
+ 
+    if (listRows.length > 0){
+      // Якщо випадково створилось кілька записів списку машин - беремо найперший, решту ігноруємо.
+      const canonical = listRows[0];
+      state.machineListRowId = canonical.id;
+      state.machines = Array.isArray(canonical.data.machines) ? canonical.data.machines : DEFAULT_MACHINES.slice();
+    } else {
+      const created = await insertTrackerRow('tracker_machine_list', { machines: DEFAULT_MACHINES.slice() });
+      if (created){ state.machineListRowId = created.id; state.machines = created.data.machines; }
+    }
+ 
+    renderAll();
+  }
+ 
+  async function persistMachineList(){
+    if (state.machineListRowId == null){
+      const created = await insertTrackerRow('tracker_machine_list', { machines: state.machines });
+      if (created) state.machineListRowId = created.id;
+      return !!created;
+    }
+    const updated = await updateTrackerRow(state.machineListRowId, 'tracker_machine_list', { machines: state.machines });
+    return !!updated;
+  }
+ 
+  // ---------- SETTINGS: API KEYS (тільки локально, не синхронізується) ----------
+  const apiKeysWrap = document.getElementById("apiKeysWrap");
+  function renderApiKeys(){
+    apiKeysWrap.innerHTML = state.apiKeys.map((k,i) => `
+      <div class="apikey-row ${i===state.activeKeyIndex?'active-slot':''}">
+        <input type="radio" name="activeApiKey" value="${i}" ${i===state.activeKeyIndex?'checked':''} data-action="pick-key">
+        <span class="ak-label">Ключ ${i+1}</span>
+        <input type="text" placeholder="Gemini API ключ ${i+1}" value="${escapeAttr(k)}" data-action="edit-key" data-i="${i}">
+      </div>
+    `).join("");
+  }
+  apiKeysWrap.addEventListener("change", (e) => {
+    const radio = e.target.closest("[data-action=pick-key]");
+    if(radio){ state.activeKeyIndex = Number(radio.value); saveActiveKey(); renderApiKeys(); }
+  });
+  apiKeysWrap.addEventListener("input", (e) => {
+    const inp = e.target.closest("[data-action=edit-key]");
+    if(inp){ state.apiKeys[Number(inp.dataset.i)] = inp.value; saveApiKeys(); }
+  });
+ 
+  function extractDigits(code){
+    if(!code) return null;
+    const m = String(code).match(/\d{6}/);
+    return m ? m[0] : null;
+  }
+  function fmtDate(iso){
+    if(!iso) return null;
+    const p = iso.split("-");
+    if(p.length!==3) return iso;
+    return `${p[2]}.${p[1]}.${p[0]}`;
+  }
+  function guessMachine(code){
+    if(!code) return null;
+    const up = code.toUpperCase();
+    const exact = state.machines.find(m => m.toUpperCase() === up);
+    if(exact) return exact;
+    const starts = state.machines.filter(m => m.toUpperCase().startsWith(up));
+    if(starts.length === 1) return starts[0];
+    return null;
+  }
+ 
+  function recompute(){
+    state.labels.forEach(l => { l.matchedMachines = []; });
+    state.orders.forEach(o => {
+      const d = extractDigits(o.labelCode);
+      o.matched = false;
+      if(d){
+        state.labels.forEach(l => {
+          if(l.digits === d){
+            o.matched = true;
+            if(o.machine && !l.matchedMachines.includes(o.machine)) l.matchedMachines.push(o.machine);
+          }
+        });
+      }
+    });
+  }
+ 
+  function parseOrdersText(text){
+    const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(l=>l.length>0);
+    const dateRe = /^(\d{2})\.(\d{2})\.(\d{4})$/;
+    const machineRe = /^([A-Za-z])\s*-?\s*(\d{2,4})\s*\+?\s*IML\b/i;
+    const blocks = [];
+    let current = null;
+    let pendingDate = null, pendingMachine = null;
+ 
+    for(const line of lines){
+      const dm = line.match(dateRe);
+      if(dm){ pendingDate = `${dm[3]}-${dm[2]}-${dm[1]}`; continue; }
+      const mm = line.match(machineRe);
+      if(mm){ pendingMachine = (mm[1] + mm[2]).toUpperCase(); continue; }
+      if(/^Numer\s+zlecenia/i.test(line)){
+        if(current) blocks.push(current);
+        current = { date: pendingDate, machine: pendingMachine, numerZlecenia:"", labelCode:"", fullTextLines:[] };
+        pendingDate = null; pendingMachine = null;
+      }
+      if(current){
+        current.fullTextLines.push(line);
+        const nz = line.match(/^Numer\s+zlecenia:\s*(.+)$/i);
+        if(nz) current.numerZlecenia = nz[1].trim();
+        const lc = line.match(/^Uwagi\s+do\s+zam[oó0]wienia:\s*(.+)$/i);
+        if(lc) current.labelCode = lc[1].trim();
+      }
+    }
+    if(current) blocks.push(current);
+ 
+    return blocks.map(b => ({
+      date: b.date,
+      machine: b.machine ? (guessMachine(b.machine) || b.machine) : null,
+      numerZlecenia: b.numerZlecenia,
+      labelCode: (b.labelCode && b.labelCode !== "-") ? b.labelCode : "",
+      fullText: b.fullTextLines.join("\n")
+    }));
+  }
+ 
+  function parseLabelCodes(text){
+    const out = [];
+    const seenDigits = new Set();
+    const re = /([#GEge])\s*(\d{6})(?!\d)|\(\s*([#GEge])?\s*(\d{6})(?!\d)\s*\)/g;
+    let m;
+    while((m = re.exec(text)) !== null){
+      let prefix, digits;
+      if(m[2]){ prefix = m[1].toUpperCase(); digits = m[2]; }
+      else { prefix = m[3] ? m[3].toUpperCase() : ""; digits = m[4]; }
+      if(seenDigits.has(digits)) continue;
+      seenDigits.add(digits);
+      out.push({ raw: prefix + digits, digits });
+    }
+    return out;
+  }
+ 
+  function fileToBase64(file){
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result.split(",")[1]);
+      r.onerror = () => reject(new Error("read failed"));
+      r.readAsDataURL(file);
+    });
+  }
+ 
+  async function ocrImage(file){
+    const apiKey = getActiveApiKey();
+    if(!apiKey) throw new Error(`Немає ключа для слоту ${state.activeKeyIndex+1}. Додайте його в Налаштуваннях або оберіть інший активний ключ.`);
+    const base64 = await fileToBase64(file);
+    const mediaType = file.type || "image/jpeg";
+    const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+      body: JSON.stringify({
+        contents: [{
+          role: "user",
+          parts: [
+            { text: "Transcribe ALL text visible in this image exactly as shown, preserving the original line breaks and order. Keep Polish, Ukrainian and Russian text as-is, do not translate. Do not add commentary, headers, quotes or explanation. Output ONLY the raw transcribed text." },
+            { inline_data: { mime_type: mediaType, data: base64 } }
+          ]
+        }]
+      })
+    });
+    const data = await resp.json();
+    if(data.error){
+      const msg = data.error.message || "Gemini API error";
+      throw new Error(`Слот ${state.activeKeyIndex+1}: ${msg}`);
+    }
+    const parts = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) || [];
+    return parts.map(p => p.text || "").join("\n");
+  }
+ 
+  const ordersList = document.getElementById("ordersList");
+  function renderOrders(){
+    const arr = state.orders.slice().sort((a,b) => {
+      const da = a.date || "9999-99-99", db = b.date || "9999-99-99";
+      return da.localeCompare(db);
+    });
+    if(arr.length === 0){
+      ordersList.innerHTML = `<div class="empty">Немає заявок.<br>Натисніть «Додати заявку», щоб додати текст або фото.</div>`;
+      return;
+    }
+    ordersList.innerHTML = arr.map(o => {
+      const missing = !o.date || !o.machine;
+      const cls = o.matched ? "matched" : (missing ? "warn" : "");
+      return `
+        <div class="row ${cls}" data-id="${o.id}" data-kind="order">
+          <div class="led"></div>
+          <div class="row-main">
+            <div class="row-line1">
+              <span>${o.date ? fmtDate(o.date) : '<span style="color:var(--red)">дата?</span>'}</span>
+              <span class="machine-badge">${o.machine || 'машина?'}</span>
+            </div>
+            <div class="row-line2">
+              <span>${escapeHtml(o.numerZlecenia || "—")}</span>
+              <span class="code ${!o.labelCode ? 'missing':''}">${o.labelCode || 'код?'}</span>
+            </div>
+          </div>
+        </div>`;
+    }).join("");
+  }
+ 
+  const labelsList = document.getElementById("labelsList");
+  function renderLabels(){
+    const arr = state.labels.slice().sort((a,b) => a.digits.localeCompare(b.digits));
+    if(arr.length === 0){
+      labelsList.innerHTML = `<div class="empty">Список етикеток порожній.<br>Натисніть «Додати етикетки».</div>`;
+      return;
+    }
+    labelsList.innerHTML = arr.map(l => {
+      const matched = l.matchedMachines && l.matchedMachines.length > 0;
+      return `
+        <div class="row label-row ${matched ? 'matched':''}" data-id="${l.id}" data-kind="label">
+          <div class="led"></div>
+          <div class="row-main">
+            <div class="code-main">${l.raw}</div>
+            ${matched ? `<div class="label-matches">${l.matchedMachines.map(m=>`<span class="machine-badge">${m}</span>`).join("")}</div>` : ''}
+          </div>
+          <div class="row-actions">
+            <button class="icon-btn" data-action="delete-label" data-id="${l.id}">✕</button>
+          </div>
+        </div>`;
+    }).join("");
+  }
+ 
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  function escapeAttr(s){ return String(s||"").replace(/"/g,"&quot;"); }
+ 
+  function renderAll(){ recompute(); renderOrders(); renderLabels(); renderMachines(); renderApiKeys(); }
+ 
+  const machinesListEl = document.getElementById("machinesList");
+  function renderMachines(){
+    document.getElementById("machineCount").textContent = state.machines.length;
+    machinesListEl.innerHTML = state.machines.map(m => `
+      <span class="machine-chip">${m}<button data-action="rm-machine" data-m="${m}">✕</button></span>
+    `).join("");
+  }
+  document.getElementById("btnAddMachine").addEventListener("click", async () => {
+    const inp = document.getElementById("newMachineInput");
+    const v = inp.value.trim().toUpperCase();
+    if(!v) return;
+    if(!state.machines.includes(v)) state.machines.push(v);
+    inp.value = "";
+    renderMachines();
+    const ok = await persistMachineList();
+    if(!ok) alert('Не вдалося зберегти список машин на сервері.');
+    syncTrackerFromServer();
+  });
+  document.getElementById("btnResetMachines").addEventListener("click", async () => {
+    if(!confirm("Скинути список машин до типового переліку?")) return;
+    state.machines = DEFAULT_MACHINES.slice();
+    renderMachines();
+    const ok = await persistMachineList();
+    if(!ok) alert('Не вдалося зберегти список машин на сервері.');
+    syncTrackerFromServer();
+  });
+  machinesListEl.addEventListener("click", async (e) => {
+    const btn = e.target.closest("[data-action=rm-machine]");
+    if(!btn) return;
+    state.machines = state.machines.filter(m => m !== btn.dataset.m);
+    renderMachines();
+    const ok = await persistMachineList();
+    if(!ok) alert('Не вдалося зберегти список машин на сервері.');
+    syncTrackerFromServer();
+  });
+ 
+  const overlayOrderDetail = document.getElementById("overlayOrderDetail");
+  let editingOrderId = null;
+ 
+  function fillMachineSelect(selectEl, currentVal){
+    selectEl.innerHTML = `<option value="">— вибрати —</option>` + state.machines.map(m => `<option value="${m}" ${m===currentVal?'selected':''}>${m}</option>`).join("");
+  }
+ 
+  function openOrderDetail(id){
+    const o = state.orders.find(x => String(x.id) === String(id));
+    if(!o) return;
+    editingOrderId = o.id;
+    document.getElementById("odSub").textContent = o.matched ? " · знайдено на буфері" : " · очікує етикетки";
+    document.getElementById("odDate").value = o.date || "";
+    fillMachineSelect(document.getElementById("odMachine"), o.machine);
+    document.getElementById("odNumer").value = o.numerZlecenia || "";
+    document.getElementById("odLabel").value = o.labelCode || "";
+    document.getElementById("odFullText").value = o.fullText || "";
+    overlayOrderDetail.classList.add("open");
+  }
+  document.getElementById("odCancel").addEventListener("click", () => overlayOrderDetail.classList.remove("open"));
+  document.getElementById("odSave").addEventListener("click", async () => {
+    const payload = {
+      date: document.getElementById("odDate").value || null,
+      machine: document.getElementById("odMachine").value || null,
+      numerZlecenia: document.getElementById("odNumer").value.trim(),
+      labelCode: document.getElementById("odLabel").value.trim(),
+      fullText: document.getElementById("odFullText").value
+    };
+    overlayOrderDetail.classList.remove("open");
+    const updated = await updateTrackerRow(editingOrderId, 'order', payload);
+    if(!updated) alert('Не вдалося зберегти заявку на сервері.');
+    syncTrackerFromServer();
+  });
+  document.getElementById("odDelete").addEventListener("click", async () => {
+    if(!confirm("Видалити цю заявку?")) return;
+    overlayOrderDetail.classList.remove("open");
+    const ok = await deleteTrackerRow(editingOrderId);
+    if(!ok) alert('Не вдалося видалити заявку на сервері.');
+    syncTrackerFromServer();
+  });
+ 
+  ordersList.addEventListener("click", (e) => {
+    const row = e.target.closest(".row[data-kind=order]");
+    if(row) openOrderDetail(row.dataset.id);
+  });
+ 
+  labelsList.addEventListener("click", async (e) => {
+    const delBtn = e.target.closest("[data-action=delete-label]");
+    if(delBtn){
+      if(confirm("Видалити цей код етикетки?")){
+        const ok = await deleteTrackerRow(delBtn.dataset.id);
+        if(!ok) alert('Не вдалося видалити етикетку на сервері.');
+        syncTrackerFromServer();
+      }
+      return;
+    }
+  });
+ 
+  document.getElementById("btnClearOrders").addEventListener("click", async () => {
+    if(state.orders.length===0) return;
+    if(!confirm("Очистити весь список заявок?")) return;
+    await Promise.all(state.orders.map(o => deleteTrackerRow(o.id)));
+    syncTrackerFromServer();
+  });
+  document.getElementById("btnClearLabels").addEventListener("click", async () => {
+    if(state.labels.length===0) return;
+    if(!confirm("Очистити весь список етикеток?")) return;
+    await Promise.all(state.labels.map(l => deleteTrackerRow(l.id)));
+    syncTrackerFromServer();
+  });
+ 
+  const overlayAddOrder = document.getElementById("overlayAddOrder");
+  const aoThumbs = document.getElementById("aoThumbs");
+  const aoStatus = document.getElementById("aoStatus");
+  let aoFiles = [];
+  let aoReviewData = [];
+ 
+  function resetAddOrderModal(){
+    document.getElementById("aoText").value = "";
+    aoFiles = [];
+    aoThumbs.innerHTML = "";
+    aoThumbs.style.display = "flex";
+    aoStatus.textContent = "";
+    aoStatus.className = "status-line";
+    document.getElementById("aoReviewWrap").style.display = "none";
+    document.querySelector("#overlayAddOrder .modal-actions").style.display = "flex";
+    document.getElementById("aoText").parentElement.style.display = "block";
+    document.querySelector("#overlayAddOrder .divider").style.display = "flex";
+    document.querySelector("#overlayAddOrder .method-grid").style.display = "flex";
+  }
+ 
+  document.getElementById("btnAddOrder").addEventListener("click", () => {
+    resetAddOrderModal();
+    overlayAddOrder.classList.add("open");
+  });
+  document.getElementById("aoCancel").addEventListener("click", () => overlayAddOrder.classList.remove("open"));
+ 
+  function addThumb(container, file, filesArr){
+    const url = URL.createObjectURL(file);
+    const div = document.createElement("div");
+    div.className = "thumb";
+    div.innerHTML = `<img src="${url}"><button class="rm">✕</button>`;
+    div.querySelector(".rm").addEventListener("click", () => {
+      const idx = filesArr.indexOf(file);
+      if(idx>-1) filesArr.splice(idx,1);
+      div.remove();
+    });
+    container.appendChild(div);
+  }
+ 
+  document.getElementById("aoGallery").addEventListener("change", (e) => {
+    Array.from(e.target.files).forEach(f => { aoFiles.push(f); addThumb(aoThumbs, f, aoFiles); });
+    e.target.value = "";
+  });
+  document.getElementById("aoCamera").addEventListener("change", (e) => {
+    Array.from(e.target.files).forEach(f => { aoFiles.push(f); addThumb(aoThumbs, f, aoFiles); });
+    e.target.value = "";
+  });
+ 
+  document.getElementById("aoRecognize").addEventListener("click", async () => {
+    const manualText = document.getElementById("aoText").value.trim();
+    if(!manualText && aoFiles.length===0){
+      aoStatus.textContent = "Додайте текст або хоча б одне фото.";
+      aoStatus.className = "status-line err";
+      return;
+    }
+    aoStatus.textContent = "Розпізнавання...";
+    aoStatus.className = "status-line";
+    let combined = manualText ? manualText + "\n" : "";
+    try{
+      for(const f of aoFiles){ combined += "\n" + await ocrImage(f); }
+    }catch(err){
+      aoStatus.textContent = "Помилка розпізнавання: " + err.message;
+      aoStatus.className = "status-line err";
+      return;
+    }
+    const parsed = parseOrdersText(combined);
+    if(parsed.length===0){
+      aoStatus.textContent = "Заявок не знайдено. Перевірте текст/фото та спробуйте ще раз.";
+      aoStatus.className = "status-line err";
+      return;
+    }
+    aoStatus.textContent = `Знайдено заявок: ${parsed.length}`;
+    aoStatus.className = "status-line ok";
+    aoReviewData = parsed;
+    renderAoReview();
+  });
+ 
+  function renderAoReview(){
+    document.getElementById("aoReviewWrap").style.display = "block";
+    document.querySelector("#overlayAddOrder .modal-actions").style.display = "none";
+    document.getElementById("aoText").parentElement.style.display = "none";
+    document.querySelector("#overlayAddOrder .divider").style.display = "none";
+    document.querySelector("#overlayAddOrder .method-grid").style.display = "none";
+    aoThumbs.style.display = "none";
+ 
+    const wrap = document.getElementById("aoReviewList");
+    wrap.innerHTML = aoReviewData.map((o, i) => `
+      <div class="review-card" data-idx="${i}">
+        <div class="rc-head"><span>Заявка ${i+1}</span></div>
+        <div class="row2">
+          <div class="field"><label>Дата</label><input type="date" class="rc-date" value="${o.date || ''}"></div>
+          <div class="field"><label>Машина</label><select class="rc-machine"></select></div>
+        </div>
+        <div class="field"><label>Numer zlecenia</label><input type="text" class="rc-numer" value="${escapeAttr(o.numerZlecenia)}"></div>
+        <div class="field"><label>Код етикетки</label><input type="text" class="rc-label" value="${escapeAttr(o.labelCode)}"></div>
+      </div>
+    `).join("");
+    wrap.querySelectorAll(".review-card").forEach((card, i) => {
+      fillMachineSelect(card.querySelector(".rc-machine"), aoReviewData[i].machine);
+    });
+  }
+ 
+  document.getElementById("aoBack").addEventListener("click", () => resetAddOrderModal());
+ 
+  document.getElementById("aoSaveAll").addEventListener("click", async () => {
+    const cards = document.querySelectorAll("#aoReviewList .review-card");
+    const inserts = [];
+    cards.forEach((card, i) => {
+      const base = aoReviewData[i];
+      inserts.push(insertTrackerRow('order', {
+        date: card.querySelector(".rc-date").value || null,
+        machine: card.querySelector(".rc-machine").value || null,
+        numerZlecenia: card.querySelector(".rc-numer").value.trim(),
+        labelCode: card.querySelector(".rc-label").value.trim(),
+        fullText: base.fullText || ""
+      }));
+    });
+    const results = await Promise.all(inserts);
+    overlayAddOrder.classList.remove("open");
+    if(results.some(r => !r)) alert('Частину заявок не вдалося зберегти на сервері.');
+    syncTrackerFromServer();
+  });
+ 
+  const overlayAddLabels = document.getElementById("overlayAddLabels");
+  const alThumbs = document.getElementById("alThumbs");
+  const alStatus = document.getElementById("alStatus");
+  let alFiles = [];
+  let alReviewData = [];
+ 
+  function resetAddLabelsModal(){
+    document.getElementById("alText").value = "";
+    alFiles = [];
+    alThumbs.innerHTML = "";
+    alThumbs.style.display = "flex";
+    alStatus.textContent = "";
+    alStatus.className = "status-line";
+    document.getElementById("alReviewWrap").style.display = "none";
+    document.querySelector("#overlayAddLabels .modal-actions").style.display = "flex";
+    document.getElementById("alText").parentElement.style.display = "block";
+    document.querySelector("#overlayAddLabels .divider").style.display = "flex";
+    document.querySelector("#overlayAddLabels .method-grid").style.display = "flex";
+  }
+ 
+  document.getElementById("btnAddLabels").addEventListener("click", () => {
+    resetAddLabelsModal();
+    overlayAddLabels.classList.add("open");
+  });
+  document.getElementById("alCancel").addEventListener("click", () => overlayAddLabels.classList.remove("open"));
+ 
+  document.getElementById("alGallery").addEventListener("change", (e) => {
+    Array.from(e.target.files).forEach(f => { alFiles.push(f); addThumb(alThumbs, f, alFiles); });
+    e.target.value = "";
+  });
+  document.getElementById("alCamera").addEventListener("change", (e) => {
+    Array.from(e.target.files).forEach(f => { alFiles.push(f); addThumb(alThumbs, f, alFiles); });
+    e.target.value = "";
+  });
+ 
+  document.getElementById("alRecognize").addEventListener("click", async () => {
+    const manualText = document.getElementById("alText").value.trim();
+    if(!manualText && alFiles.length===0){
+      alStatus.textContent = "Додайте текст або хоча б одне фото.";
+      alStatus.className = "status-line err";
+      return;
+    }
+    alStatus.textContent = "Розпізнавання...";
+    alStatus.className = "status-line";
+    let combined = manualText ? manualText + "\n" : "";
+    try{
+      for(const f of alFiles){ combined += "\n" + await ocrImage(f); }
+    }catch(err){
+      alStatus.textContent = "Помилка розпізнавання: " + err.message;
+      alStatus.className = "status-line err";
+      return;
+    }
+    const parsed = parseLabelCodes(combined);
+    if(parsed.length===0){
+      alStatus.textContent = "Кодів не знайдено. Перевірте текст/фото та спробуйте ще раз.";
+      alStatus.className = "status-line err";
+      return;
+    }
+    alStatus.textContent = `Знайдено кодів: ${parsed.length}`;
+    alStatus.className = "status-line ok";
+    alReviewData = parsed;
+    renderAlReview();
+  });
+ 
+  function renderAlReview(){
+    document.getElementById("alReviewWrap").style.display = "block";
+    document.querySelector("#overlayAddLabels .modal-actions").style.display = "none";
+    document.getElementById("alText").parentElement.style.display = "none";
+    document.querySelector("#overlayAddLabels .divider").style.display = "none";
+    document.querySelector("#overlayAddLabels .method-grid").style.display = "none";
+    alThumbs.style.display = "none";
+ 
+    const wrap = document.getElementById("alReviewList");
+    wrap.innerHTML = `<div id="alChips"></div>`;
+    const chips = document.getElementById("alChips");
+    renderChips();
+    function renderChips(){
+      chips.innerHTML = alReviewData.map((c,i) => `<span class="code-chip">${c.raw}<button class="rm" data-i="${i}">✕</button></span>`).join("");
+      chips.querySelectorAll(".rm").forEach(btn => {
+        btn.addEventListener("click", () => {
+          alReviewData.splice(Number(btn.dataset.i),1);
+          renderChips();
+        });
+      });
     }
   }
-
-  syncFromServer();
-
-  // Подписка: когда кто-то другой добавит/удалит машину, список обновится сам.
-  sb.channel('machines-changes')
-    .on('postgres_changes', { event: '*', schema: 'public', table: TABLE }, function () {
-      syncFromServer();
-    })
+ 
+  document.getElementById("alBack").addEventListener("click", () => resetAddLabelsModal());
+ 
+  document.getElementById("alSaveAll").addEventListener("click", async () => {
+    const existingDigits = new Set(state.labels.map(l => l.digits));
+    const inserts = [];
+    alReviewData.forEach(c => {
+      if(existingDigits.has(c.digits)) return;
+      inserts.push(insertTrackerRow('label', { raw: c.raw, digits: c.digits }));
+      existingDigits.add(c.digits);
+    });
+    const results = await Promise.all(inserts);
+    overlayAddLabels.classList.remove("open");
+    if(results.some(r => !r)) alert('Частину етикеток не вдалося зберегти на сервері.');
+    syncTrackerFromServer();
+  });
+ 
+  // ---------- INIT ----------
+  syncTrackerFromServer();
+  sb.channel('tracker-changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: TABLE }, function () { syncTrackerFromServer(); })
     .subscribe();
 })();
 </script>
-
 </body>
 </html>
+ 
