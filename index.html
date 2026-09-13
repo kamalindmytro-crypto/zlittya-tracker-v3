@@ -404,6 +404,7 @@ footer{
 .mod-tracker .order-card.warn{ border-left-color:var(--red); }
 .mod-tracker .order-card .oc-no{ font-family:var(--mono); font-size:10px; color:var(--text-dim); word-break:break-all; }
 .mod-tracker .order-card .oc-main{ font-family:var(--mono); font-weight:700; font-size:14.5px; color:var(--amber); margin-top:4px; line-height:1.3; word-break:break-word; }
+.mod-tracker .order-card .oc-date{ font-family:var(--mono); font-size:11px; color:var(--text-muted); margin-top:4px; }
 .mod-tracker .order-card.matched .oc-main{ color:var(--green); }
 .mod-tracker .order-card.warn .oc-main{ color:var(--red); }
 .mod-tracker .order-card .oc-match{ font-size:10.5px; font-weight:700; color:var(--green); margin-top:6px; display:flex; align-items:center; gap:4px; letter-spacing:.02em; }
@@ -1408,10 +1409,10 @@ document.querySelectorAll(".tab").forEach(t => {
  
   const ordersList = document.getElementById("ordersList");
   function renderOrders(){
-    // Спочатку заявки, які ще ЧЕКАЮТЬ на співпадіння етикетки (потребують уваги),
-    // потім ті, для яких етикетку вже знайдено; в межах групи - за датою початку.
+    // Спочатку заявки, для яких вже знайдено співпадіння етикетки,
+    // потім ті, що ще чекають; в межах групи - за датою початку.
     const arr = state.orders.slice().sort((a,b) => {
-      if (a.matched !== b.matched) return a.matched ? 1 : -1;
+      if (a.matched !== b.matched) return a.matched ? -1 : 1;
       return sortableDate(a.date).localeCompare(sortableDate(b.date));
     });
     if(arr.length === 0){
@@ -1430,6 +1431,7 @@ document.querySelectorAll(".tab").forEach(t => {
         <div class="order-card ${cls}" data-id="${o.id}" data-kind="order">
           <div class="oc-no">${escapeHtml(o.numerZlecenia || 'без номера')}</div>
           <div class="oc-main">${escapeHtml(mainLine)}</div>
+          <div class="oc-date">${escapeHtml(o.date || 'дата?')}</div>
           ${badge}
         </div>`;
     }).join("");
@@ -1568,9 +1570,9 @@ document.querySelectorAll(".tab").forEach(t => {
   document.getElementById("btnPrintOrders").addEventListener("click", () => {
     if(state.orders.length === 0){ alert('Немає заявок для друку.'); return; }
 
-    // Той самий порядок, що й на екрані: заявки, що очікують етикетку, потім - знайдені.
+    // Той самий порядок, що й на екрані: знайдені (matched) заявки першими.
     const arr = state.orders.slice().sort((a,b) => {
-      if (a.matched !== b.matched) return a.matched ? 1 : -1;
+      if (a.matched !== b.matched) return a.matched ? -1 : 1;
       return sortableDate(a.date).localeCompare(sortableDate(b.date));
     });
 
