@@ -406,6 +406,8 @@ footer{
 .mod-tracker .order-card .oc-main{ font-family:var(--mono); font-weight:700; font-size:14.5px; color:var(--amber); margin-top:4px; line-height:1.3; word-break:break-word; }
 .mod-tracker .order-card.matched .oc-main{ color:var(--green); }
 .mod-tracker .order-card.warn .oc-main{ color:var(--red); }
+.mod-tracker .order-card .oc-match{ font-size:10.5px; font-weight:700; color:var(--green); margin-top:6px; display:flex; align-items:center; gap:4px; letter-spacing:.02em; }
+.mod-tracker .order-card .oc-waiting{ font-size:10.5px; font-weight:600; color:var(--text-dim); margin-top:6px; letter-spacing:.02em; }
 </style>
 </head>
 <body>
@@ -442,6 +444,7 @@ footer{
     <section id="view-orders" class="mod-tracker">
       <div class="toolbar">
         <button class="btn btn-primary" id="btnAddOrder">+ Додати фото заявок</button>
+        <button class="btn" id="btnPrintOrders">🖨️ Друк</button>
         <button class="btn btn-danger" id="btnClearOrders">Очистити все</button>
       </div>
       <div class="order-cards" id="ordersList"></div>
@@ -1405,7 +1408,12 @@ document.querySelectorAll(".tab").forEach(t => {
  
   const ordersList = document.getElementById("ordersList");
   function renderOrders(){
-    const arr = state.orders.slice().sort((a,b) => sortableDate(a.date).localeCompare(sortableDate(b.date)));
+    // Спочатку заявки, які ще ЧЕКАЮТЬ на співпадіння етикетки (потребують уваги),
+    // потім ті, для яких етикетку вже знайдено; в межах групи - за датою початку.
+    const arr = state.orders.slice().sort((a,b) => {
+      if (a.matched !== b.matched) return a.matched ? 1 : -1;
+      return sortableDate(a.date).localeCompare(sortableDate(b.date));
+    });
     if(arr.length === 0){
       ordersList.innerHTML = `<div class="empty">Немає заявок.<br>Натисніть «Додати фото заявок», щоб розпізнати їх з фото екрана.</div>`;
       return;
@@ -1415,10 +1423,14 @@ document.querySelectorAll(".tab").forEach(t => {
       const cls = o.matched ? "matched" : (missing ? "warn" : "");
       const code = extractDigits(o.labelCode) ? o.labelCode.trim() : (o.labelCode ? o.labelCode : 'код?');
       const mainLine = `${o.machine || 'машина?'}  ${code}`;
+      const badge = o.matched
+        ? `<div class="oc-match">✓ Етикетка знайдена</div>`
+        : `<div class="oc-waiting">⏳ Очікує етикетку</div>`;
       return `
         <div class="order-card ${cls}" data-id="${o.id}" data-kind="order">
           <div class="oc-no">${escapeHtml(o.numerZlecenia || 'без номера')}</div>
           <div class="oc-main">${escapeHtml(mainLine)}</div>
+          ${badge}
         </div>`;
     }).join("");
   }
@@ -1553,6 +1565,73 @@ document.querySelectorAll(".tab").forEach(t => {
     }
   });
  
+  document.getElementById("btnPrintOrders").addEventListener("click", () => {
+    if(state.orders.length === 0){ alert('Немає заявок для друку.'); return; }
+
+    // Той самий порядок, що й на екрані: заявки, що очікують етикетку, потім - знайдені.
+    const arr = state.orders.slice().sort((a,b) => {
+      if (a.matched !== b.matched) return a.matched ? 1 : -1;
+      return sortableDate(a.date).localeCompare(sortableDate(b.date));
+    });
+
+    // Текст малюємо на canvas і вставляємо як зображення в PDF, бо вбудовані
+    // шрифти jsPDF (helvetica/times/courier) не містять кириличних гліфів.
+    const pxPerMm = 3.7795275591; // ~96dpi
+    const pageWmm = 210, pageHmm = 297;
+    const pageWpx = Math.round(pageWmm * pxPerMm);
+    const pageHpx = Math.round(pageHmm * pxPerMm);
+    const marginPx = Math.round(16 * pxPerMm);
+    const lineH = 24;
+    const blockGap = 16;
+    const fontMain = "700 17px -apple-system, Arial, sans-serif";
+    const fontSub = "400 15px -apple-system, Arial, sans-serif";
+
+    const pages = [];
+    let canvas, ctx, y;
+
+    function startNewPage(){
+      canvas = document.createElement('canvas');
+      canvas.width = pageWpx;
+      canvas.height = pageHpx;
+      ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, pageWpx, pageHpx);
+      ctx.fillStyle = '#000000';
+      pages.push(canvas);
+      return marginPx;
+    }
+
+    y = startNewPage();
+
+    arr.forEach((o) => {
+      if (y + lineH * 3 + blockGap > pageHpx - marginPx) {
+        y = startNewPage();
+      }
+      const numer = o.numerZlecenia || 'без номера';
+      const dateLine = `ДАТА ПОЧАТКУ: ${o.date || '-'}`;
+      const code = extractDigits(o.labelCode) ? o.labelCode.trim() : (o.labelCode || '-');
+      const machineLine = `${o.machine || 'машина?'} ${code}`;
+
+      ctx.font = fontMain;
+      ctx.fillText(numer, marginPx, y);
+      y += lineH;
+      ctx.font = fontSub;
+      ctx.fillText(dateLine, marginPx, y);
+      y += lineH;
+      ctx.fillText(machineLine, marginPx, y);
+      y += lineH + blockGap;
+    });
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    pages.forEach((pg, i) => {
+      if (i > 0) doc.addPage();
+      doc.addImage(pg.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, pageWmm, pageHmm);
+    });
+    const stamp = new Date().toISOString().slice(0,10);
+    doc.save(`zayavky_${stamp}.pdf`);
+  });
+
   document.getElementById("btnClearOrders").addEventListener("click", async () => {
     if(state.orders.length===0) return;
     if(!confirm("Очистити весь список заявок?")) return;
@@ -1731,12 +1810,20 @@ document.querySelectorAll(".tab").forEach(t => {
  
   document.getElementById("aoSaveAll").addEventListener("click", async () => {
     const cards = document.querySelectorAll("#aoReviewList .review-card");
+    // Заявка з таким самим "Numer zlecenia" вже є в базі - не створюємо дубль.
+    const existingNumbers = new Set(
+      state.orders.map(o => (o.numerZlecenia || '').trim()).filter(Boolean)
+    );
     const inserts = [];
+    let duplicates = 0;
     cards.forEach((card) => {
+      const numer = card.querySelector(".rc-numer").value.trim();
+      if (numer && existingNumbers.has(numer)) { duplicates++; return; }
+      if (numer) existingNumbers.add(numer);
       inserts.push(insertTrackerRow('order', {
         date: card.querySelector(".rc-date").value.trim(),
         machine: card.querySelector(".rc-machine").value || null,
-        numerZlecenia: card.querySelector(".rc-numer").value.trim(),
+        numerZlecenia: numer,
         nrKatalogowy: card.querySelector(".rc-katalogowy").value.trim(),
         nazwaProduktu: card.querySelector(".rc-nazwa").value.trim(),
         labelCode: card.querySelector(".rc-label").value.trim(),
@@ -1747,6 +1834,7 @@ document.querySelectorAll(".tab").forEach(t => {
     const results = await Promise.all(inserts);
     overlayAddOrder.classList.remove("open");
     if(results.some(r => !r)) alert('Частину заявок не вдалося зберегти на сервері.');
+    if(duplicates > 0) alert(`Пропущено як дублікати (за номером замовлення): ${duplicates}`);
     syncTrackerFromServer();
   });
  
