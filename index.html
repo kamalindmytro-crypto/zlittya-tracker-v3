@@ -947,6 +947,26 @@ if (window.supabase) {
 // Записи, зроблені до цього оновлення, не мають поля kind і трактуються як 'zlyttya'
 // (щоб старі дані з контролю злиття лишились на місці).
 const TABLE = 'machines';
+
+// ---------- Telegram-сповіщення (той самий бот, що й у першому додатку) ----------
+const TELEGRAM_BOT_TOKEN = '8838034262:AAESyP8pxRJN6jUZbjxKpJMiUzMSAhAbZLI';
+const TELEGRAM_CHAT_ID = '259803878';
+
+async function sendTelegramMessage(text){
+  try{
+    const resp = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text })
+    });
+    const data = await resp.json().catch(()=>null);
+    if (!data || !data.ok){ console.error('Telegram sendMessage failed', data); return false; }
+    return true;
+  }catch(e){
+    console.error('Telegram sendMessage error', e);
+    return false;
+  }
+}
  
 /* ======================= ТАБИ ======================= */
 document.querySelectorAll(".tab").forEach(t => {
@@ -2361,7 +2381,7 @@ document.querySelectorAll(".tab").forEach(t => {
       while (due <= now && iter < 2000){ due = addOccurrence(due, r.recurrence); iter++; }
       if (iter > 0){
         updates.push(updateReminderOnServer(r.id, Object.assign(stripId(r), {
-          datetime: toLocalInputString(due), dueAt: due.toISOString(), notifiedAt: null
+          datetime: toLocalInputString(due), dueAt: due.toISOString(), notifiedAt: null, tgNotifiedAt: null
         })));
       }
     }
@@ -2409,11 +2429,34 @@ document.querySelectorAll(".tab").forEach(t => {
       let payload;
       if (r.recurrence && r.recurrence.type !== 'none'){
         const next = addOccurrence(new Date(r.datetime), r.recurrence);
-        payload = Object.assign(stripId(r), { datetime: toLocalInputString(next), dueAt: next.toISOString(), notifiedAt: null });
+        payload = Object.assign(stripId(r), { datetime: toLocalInputString(next), dueAt: next.toISOString(), notifiedAt: null, tgNotifiedAt: null });
       } else {
         payload = Object.assign(stripId(r), { notifiedAt: now.toISOString() });
       }
       await updateReminderOnServer(r.id, payload);
+    }
+    await syncRemindersFromServer();
+  }
+
+  /* ---------- TELEGRAM: сповіщення за 5 хв до події ---------- */
+  const TG_LEAD_MS = 5 * 60 * 1000;
+  async function checkTelegramDue(){
+    const now = new Date();
+    const soon = new Date(now.getTime() + TG_LEAD_MS);
+    const due = state.reminders.filter(r =>
+      !r.completed && r.dueAt && !r.tgNotifiedAt &&
+      new Date(r.dueAt) > now && new Date(r.dueAt) <= soon
+    );
+    if (!due.length) return;
+    for (const r of due){
+      const rec = recurrenceLabel(r.recurrence);
+      let text = `⏰ Через 5 хв: ${r.title}\n${fmtDateTime(r.datetime)}`;
+      if (rec) text += ` · ↻ ${rec}`;
+      if (r.note) text += `\n${r.note}`;
+      const ok = await sendTelegramMessage(text);
+      if (ok){
+        await updateReminderOnServer(r.id, Object.assign(stripId(r), { tgNotifiedAt: now.toISOString() }));
+      }
     }
     await syncRemindersFromServer();
   }
@@ -2609,7 +2652,7 @@ document.querySelectorAll(".tab").forEach(t => {
     if (state.editingId){
       const existing = state.reminders.find(x=>String(x.id)===String(state.editingId)) || {};
       ok = await updateReminderOnServer(state.editingId, Object.assign({}, data, {
-        dueAt, notifiedAt: null, completed: existing.completed || false,
+        dueAt, notifiedAt: null, tgNotifiedAt: null, completed: existing.completed || false,
         createdAt: existing.createdAt || new Date().toISOString(), source: existing.source || 'manual'
       }));
     } else {
@@ -2944,7 +2987,8 @@ document.querySelectorAll(".tab").forEach(t => {
       await catchUpMissed();
       await syncRemindersFromServer();
       checkDue();
-      setInterval(checkDue, 20000);
+      checkTelegramDue();
+      setInterval(function(){ checkDue(); checkTelegramDue(); }, 20000);
     })();
 
     sb.channel('reminders-changes')
