@@ -1920,16 +1920,25 @@ document.querySelectorAll(".tab").forEach(t => {
     aoStatus.textContent = `Знайдено заявок: ${rawResults.length}` + (skipped > 0 ? ` (пропущено ${skipped} без номера етикетки)` : '');
     aoStatus.className = "status-line ok";
  
-    aoReviewData = rawResults.map(rec => ({
-      date: rec.data_rozpoczecia || "",
-      machine: guessMachine(extractMachineCode(rec.maszyna_forma)),
-      numerZlecenia: rec.numer_zlecenia || "",
-      nrKatalogowy: rec.nr_katalogowy || "",
-      nazwaProduktu: rec.nazwa_produktu || "",
-      labelCode: rec.uwagi_zamowienia || "",
-      uwagiZlecenia: rec.uwagi_zlecenia || "",
-      iloscNaZleceniu: rec.ilosc_na_zleceniu || ""
-    }));
+    aoReviewData = rawResults.map(rec => {
+      let machine = guessMachine(extractMachineCode(rec.maszyna_forma));
+      if(!machine && rec.numer_zlecenia){
+        // Машину не розпізнано з фото заявки - шукаємо збіг за Numer zlecenia у вкладці "Нові зліценія".
+        const num = rec.numer_zlecenia.trim();
+        const match = state.newOrders.find(no => (no.numerZlecenia || '').trim() === num && no.machine);
+        if(match) machine = match.machine;
+      }
+      return {
+        date: rec.data_rozpoczecia || "",
+        machine: machine,
+        numerZlecenia: rec.numer_zlecenia || "",
+        nrKatalogowy: rec.nr_katalogowy || "",
+        nazwaProduktu: rec.nazwa_produktu || "",
+        labelCode: rec.uwagi_zamowienia || "",
+        uwagiZlecenia: rec.uwagi_zlecenia || "",
+        iloscNaZleceniu: rec.ilosc_na_zleceniu || ""
+      };
+    });
     renderAoReview();
   });
  
