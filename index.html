@@ -409,6 +409,42 @@ footer{
 .mod-tracker .order-card.warn .oc-main{ color:var(--red); }
 .mod-tracker .order-card .oc-match{ font-size:10.5px; font-weight:700; color:var(--green); margin-top:6px; display:flex; align-items:center; gap:4px; letter-spacing:.02em; }
 .mod-tracker .order-card .oc-waiting{ font-size:10.5px; font-weight:600; color:var(--text-dim); margin-top:6px; letter-spacing:.02em; }
+
+/* ---- Тумблер "Етикетку принесено" на картці заявки ---- */
+.mod-tracker .oc-brought-row{
+  display:flex; align-items:center; justify-content:space-between; gap:6px;
+  margin-top:8px; padding-top:8px; border-top:1px solid var(--border);
+}
+.mod-tracker .oc-brought-label{ font-size:10px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.03em; }
+.mod-tracker .oc-brought-switch{
+  position:relative; width:34px; height:19px; border-radius:20px; background:var(--surface-3);
+  border:1px solid var(--border); flex:none; cursor:pointer; transition:background .15s, border-color .15s;
+}
+.mod-tracker .oc-brought-switch::after{
+  content:""; position:absolute; top:1px; left:1px; width:15px; height:15px; border-radius:50%;
+  background:var(--text-dim); transition:transform .15s, background .15s;
+}
+.mod-tracker .oc-brought-switch.on{ background:rgba(56,201,138,.18); border-color:var(--green); }
+.mod-tracker .oc-brought-switch.on::after{ transform:translateX(15px); background:var(--green); box-shadow:0 0 6px 1px rgba(56,201,138,.65); }
+
+/* Зелена лампочка-індикатор "принесено", яка дублюється у Етикетках та Нових зліценіях */
+.mod-tracker .brought-dot{
+  width:9px; height:9px; border-radius:50%; flex:none; background:var(--surface-3); border:1px solid var(--border);
+}
+.mod-tracker .brought-dot.on{ background:var(--green); border-color:var(--green); box-shadow:0 0 6px 1px rgba(56,201,138,.65); animation:tr-pulse 2.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce){ .mod-tracker .brought-dot.on{ animation:none; } }
+.mod-tracker .label-row .brought-wrap{ display:flex; align-items:center; gap:5px; margin-top:4px; }
+.mod-tracker .label-row .brought-wrap span{ font-size:10px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.03em; }
+
+/* ---- Нові зліценія: сині картки, стиль як у "Заявка" ---- */
+.mod-tracker .order-card.new-zlecenie{ border-left-color:#2f7cf6; }
+.mod-tracker .order-card.new-zlecenie .oc-no{ color:#5a9bff; }
+.mod-tracker .order-card.new-zlecenie .oc-main{ color:#2f7cf6; }
+.mod-tracker .order-card.new-zlecenie .oc-date{ color:#5a9bff; }
+.mod-tracker .order-card.new-zlecenie .oc-label{ font-family:var(--mono); font-size:12px; color:#2f7cf6; margin-top:6px; font-weight:700; }
+.mod-tracker .order-card.new-zlecenie .oc-label.oc-label-missing{ color:var(--text-dim); font-weight:400; }
+.mod-tracker .order-card.new-zlecenie .brought-wrap{ display:flex; align-items:center; gap:5px; margin-top:6px; }
+.mod-tracker .order-card.new-zlecenie .brought-wrap span{ font-size:10px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.03em; }
 </style>
 </head>
 <body>
@@ -422,6 +458,7 @@ footer{
     </div>
     <div class="tabs">
       <button class="tab active" data-tab="zlyttya">Злиття</button>
+      <button class="tab" data-tab="neworders">Нові зліценія</button>
       <button class="tab" data-tab="orders">Заявки</button>
       <button class="tab" data-tab="labels">Етикетки</button>
       <button class="tab" data-tab="settings">Налаштування</button>
@@ -441,6 +478,15 @@ footer{
       <section class="cards" id="cardsWrap"></section>
     </section>
  
+    <!-- ======================= НОВІ ЗЛІЦЕНІЯ (фото → AI → короткі картки) ======================= -->
+    <section id="view-neworders" class="mod-tracker">
+      <div class="toolbar">
+        <button class="btn btn-primary" id="btnAddNewOrder">+ Додати фото зліценій</button>
+        <button class="btn btn-danger" id="btnClearNewOrders">Очистити все</button>
+      </div>
+      <div class="order-cards" id="newOrdersList"></div>
+    </section>
+
     <!-- ======================= ЗАЯВКИ (фото → AI → структуровані картки) ======================= -->
     <section id="view-orders" class="mod-tracker">
       <div class="toolbar">
@@ -633,6 +679,33 @@ footer{
   </div>
 </div>
  
+<div class="mod-tracker overlay" id="overlayAddNewOrder">
+  <div class="modal">
+    <h2>Додати нові зліценія<span class="sub">Фото екрана HermesSQL — розпізнавання через AI</span></h2>
+
+    <div class="method-grid">
+      <label class="method-btn" for="anoGallery"><span class="ic">🖼️</span>З галереї (до 10)</label>
+      <label class="method-btn" for="anoCamera"><span class="ic">📷</span>Зробити фото</label>
+    </div>
+    <input type="file" id="anoGallery" accept="image/*" multiple style="display:none;">
+    <input type="file" id="anoCamera" accept="image/*" capture="environment" style="display:none;">
+    <div class="thumbs" id="anoThumbs"></div>
+    <div class="status-line" id="anoStatus"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="anoCancel">Скасувати</button>
+      <button class="btn btn-primary" id="anoRecognize">Розпізнати</button>
+    </div>
+    <div id="anoReviewWrap" style="display:none;">
+      <div class="divider">Знайдені зліценія</div>
+      <div id="anoReviewList"></div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="anoBack">Назад</button>
+        <button class="btn btn-primary" id="anoSaveAll">Зберегти всі</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="mod-tracker overlay" id="overlayAddLabels">
   <div class="modal">
     <h2>Додати етикетки<span class="sub">Коди з коробок / список кодів</span></h2>
@@ -1047,6 +1120,7 @@ document.querySelectorAll(".tab").forEach(t => {
  
   const state = {
     orders: [],
+    newOrders: [],
     labels: [],
     machines: DEFAULT_MACHINES.slice(),
     apiKeys: loadApiKeys(),
@@ -1087,6 +1161,7 @@ document.querySelectorAll(".tab").forEach(t => {
     if (rows === null) return;
  
     const orderRows = rows.filter(r => r.data && r.data.kind === 'order');
+    const newOrderRows = rows.filter(r => r.data && r.data.kind === 'new_order');
     const labelRows = rows.filter(r => r.data && r.data.kind === 'label');
     const listRows = rows.filter(r => r.data && r.data.kind === 'tracker_machine_list');
  
@@ -1099,10 +1174,17 @@ document.querySelectorAll(".tab").forEach(t => {
       nazwaProduktu: r.data.nazwaProduktu || "",
       labelCode: r.data.labelCode || "",
       uwagiZlecenia: r.data.uwagiZlecenia || "",
-      iloscNaZleceniu: r.data.iloscNaZleceniu || ""
+      iloscNaZleceniu: r.data.iloscNaZleceniu || "",
+      labelBrought: !!r.data.labelBrought
+    }));
+    state.newOrders = newOrderRows.map(r => ({
+      id: r.id,
+      date: r.data.date || "",
+      machine: r.data.machine || null,
+      numerZlecenia: r.data.numerZlecenia || ""
     }));
     state.labels = labelRows.map(r => ({
-      id: r.id, raw: r.data.raw, digits: r.data.digits, matchedMachines: []
+      id: r.id, raw: r.data.raw, digits: r.data.digits, matchedMachines: [], brought: false
     }));
  
     if (listRows.length > 0){
@@ -1182,7 +1264,7 @@ document.querySelectorAll(".tab").forEach(t => {
   }
  
   function recompute(){
-    state.labels.forEach(l => { l.matchedMachines = []; });
+    state.labels.forEach(l => { l.matchedMachines = []; l.brought = false; });
     state.orders.forEach(o => {
       const d = extractDigits(o.labelCode);
       o.matched = false;
@@ -1191,9 +1273,17 @@ document.querySelectorAll(".tab").forEach(t => {
           if(l.digits === d){
             o.matched = true;
             if(o.machine && !l.matchedMachines.includes(o.machine)) l.matchedMachines.push(o.machine);
+            if(o.labelBrought) l.brought = true;
           }
         });
       }
+    });
+    // Нові зліценія: шукаємо код етикетки та статус "принесено" за збігом Numer zlecenia з вкладкою "Заявки".
+    state.newOrders.forEach(no => {
+      const num = (no.numerZlecenia || '').trim();
+      const match = num ? state.orders.find(o => (o.numerZlecenia || '').trim() === num) : null;
+      no.labelCode = match ? match.labelCode : "";
+      no.brought = match ? !!match.labelBrought : false;
     });
   }
  
@@ -1433,10 +1523,37 @@ document.querySelectorAll(".tab").forEach(t => {
           <div class="oc-main">${escapeHtml(mainLine)}</div>
           <div class="oc-date">${escapeHtml(o.date || 'дата?')}</div>
           ${badge}
+          <div class="oc-brought-row">
+            <span class="oc-brought-label">Етикетку принесено</span>
+            <div class="oc-brought-switch ${o.labelBrought ? 'on' : ''}" data-action="toggle-brought" data-id="${o.id}"></div>
+          </div>
         </div>`;
     }).join("");
   }
  
+  const newOrdersList = document.getElementById("newOrdersList");
+  function renderNewOrders(){
+    const arr = state.newOrders.slice().sort((a,b) => sortableDate(a.date).localeCompare(sortableDate(b.date)));
+    if(arr.length === 0){
+      newOrdersList.innerHTML = `<div class="empty">Немає нових зліценій.<br>Натисніть «Додати фото зліценій», щоб розпізнати їх з фото екрана.</div>`;
+      return;
+    }
+    newOrdersList.innerHTML = arr.map(no => {
+      const hasLabel = extractDigits(no.labelCode);
+      const labelLine = hasLabel
+        ? `<div class="oc-label">${escapeHtml(no.labelCode.trim())}</div>`
+        : `<div class="oc-label oc-label-missing">код етикетки невідомий</div>`;
+      return `
+        <div class="order-card new-zlecenie" data-id="${no.id}" data-kind="neworder">
+          <div class="oc-no">${escapeHtml(no.numerZlecenia || 'без номера')}</div>
+          <div class="oc-main">${escapeHtml(no.date || 'дата?')}</div>
+          <div class="oc-date">${escapeHtml(no.machine || 'машина?')}</div>
+          ${labelLine}
+          <div class="brought-wrap"><div class="brought-dot ${no.brought ? 'on':''}"></div><span>${no.brought ? 'Принесено' : 'Не принесено'}</span></div>
+        </div>`;
+    }).join("");
+  }
+
   const labelsList = document.getElementById("labelsList");
   function renderLabels(){
     const arr = state.labels.slice().sort((a,b) => a.digits.localeCompare(b.digits));
@@ -1452,6 +1569,7 @@ document.querySelectorAll(".tab").forEach(t => {
           <div class="row-main">
             <div class="code-main">${l.raw}</div>
             ${matched ? `<div class="label-matches">${l.matchedMachines.map(m=>`<span class="machine-badge">${m}</span>`).join("")}</div>` : ''}
+            <div class="brought-wrap"><div class="brought-dot ${l.brought ? 'on':''}"></div><span>${l.brought ? 'Принесено' : 'Не принесено'}</span></div>
           </div>
           <div class="row-actions">
             <button class="icon-btn" data-action="delete-label" data-id="${l.id}">✕</button>
@@ -1465,7 +1583,7 @@ document.querySelectorAll(".tab").forEach(t => {
   }
   function escapeAttr(s){ return String(s||"").replace(/"/g,"&quot;"); }
  
-  function renderAll(){ recompute(); renderOrders(); renderLabels(); renderMachines(); renderApiKeys(); }
+  function renderAll(){ recompute(); renderOrders(); renderNewOrders(); renderLabels(); renderMachines(); renderApiKeys(); }
  
   const machinesListEl = document.getElementById("machinesList");
   function renderMachines(){
@@ -1527,6 +1645,7 @@ document.querySelectorAll(".tab").forEach(t => {
   }
   document.getElementById("odCancel").addEventListener("click", () => overlayOrderDetail.classList.remove("open"));
   document.getElementById("odSave").addEventListener("click", async () => {
+    const existing = state.orders.find(x => String(x.id) === String(editingOrderId));
     const payload = {
       date: document.getElementById("odDate").value.trim(),
       machine: document.getElementById("odMachine").value || null,
@@ -1535,7 +1654,8 @@ document.querySelectorAll(".tab").forEach(t => {
       nazwaProduktu: document.getElementById("odNazwa").value.trim(),
       labelCode: document.getElementById("odLabel").value.trim(),
       uwagiZlecenia: document.getElementById("odUwagiZlecenia").value.trim(),
-      iloscNaZleceniu: document.getElementById("odIlosc").value.trim()
+      iloscNaZleceniu: document.getElementById("odIlosc").value.trim(),
+      labelBrought: existing ? !!existing.labelBrought : false
     };
     overlayOrderDetail.classList.remove("open");
     const updated = await updateTrackerRow(editingOrderId, 'order', payload);
@@ -1550,11 +1670,44 @@ document.querySelectorAll(".tab").forEach(t => {
     syncTrackerFromServer();
   });
  
-  ordersList.addEventListener("click", (e) => {
+  ordersList.addEventListener("click", async (e) => {
+    const toggle = e.target.closest("[data-action=toggle-brought]");
+    if(toggle){
+      e.stopPropagation();
+      const o = state.orders.find(x => String(x.id) === String(toggle.dataset.id));
+      if(!o) return;
+      const newVal = !o.labelBrought;
+      toggle.classList.toggle("on", newVal);
+      const updated = await updateTrackerRow(o.id, 'order', {
+        date: o.date, machine: o.machine, numerZlecenia: o.numerZlecenia,
+        nrKatalogowy: o.nrKatalogowy, nazwaProduktu: o.nazwaProduktu, labelCode: o.labelCode,
+        uwagiZlecenia: o.uwagiZlecenia, iloscNaZleceniu: o.iloscNaZleceniu, labelBrought: newVal
+      });
+      if(!updated){ toggle.classList.toggle("on", !newVal); alert('Не вдалося зберегти статус на сервері.'); return; }
+      syncTrackerFromServer();
+      return;
+    }
     const card = e.target.closest(".order-card[data-kind=order]");
     if(card) openOrderDetail(card.dataset.id);
   });
  
+  newOrdersList.addEventListener("click", async (e) => {
+    const card = e.target.closest(".order-card[data-kind=neworder]");
+    if(!card) return;
+    if(confirm("Видалити це зліценіє?")){
+      const ok = await deleteTrackerRow(card.dataset.id);
+      if(!ok) alert('Не вдалося видалити зліценіє на сервері.');
+      syncTrackerFromServer();
+    }
+  });
+
+  document.getElementById("btnClearNewOrders").addEventListener("click", async () => {
+    if(state.newOrders.length===0) return;
+    if(!confirm("Очистити весь список нових зліценій?")) return;
+    await Promise.all(state.newOrders.map(no => deleteTrackerRow(no.id)));
+    syncTrackerFromServer();
+  });
+
   labelsList.addEventListener("click", async (e) => {
     const delBtn = e.target.closest("[data-action=delete-label]");
     if(delBtn){
@@ -1840,6 +1993,155 @@ document.querySelectorAll(".tab").forEach(t => {
     syncTrackerFromServer();
   });
  
+  const overlayAddNewOrder = document.getElementById("overlayAddNewOrder");
+  const anoThumbs = document.getElementById("anoThumbs");
+  const anoStatus = document.getElementById("anoStatus");
+  const ANO_MAX_FILES = 10;
+  let anoFiles = [];
+  let anoReviewData = [];
+
+  function resetAddNewOrderModal(){
+    anoFiles = [];
+    anoThumbs.innerHTML = "";
+    anoThumbs.style.display = "flex";
+    anoStatus.textContent = "";
+    anoStatus.className = "status-line";
+    document.getElementById("anoReviewWrap").style.display = "none";
+    document.querySelector("#overlayAddNewOrder .modal-actions").style.display = "flex";
+    document.querySelector("#overlayAddNewOrder .method-grid").style.display = "flex";
+  }
+
+  document.getElementById("btnAddNewOrder").addEventListener("click", () => {
+    resetAddNewOrderModal();
+    overlayAddNewOrder.classList.add("open");
+  });
+  document.getElementById("anoCancel").addEventListener("click", () => overlayAddNewOrder.classList.remove("open"));
+
+  function addAnoFiles(fileList){
+    const incoming = Array.from(fileList);
+    const room = ANO_MAX_FILES - anoFiles.length;
+    if(room <= 0){
+      alert(`Максимум ${ANO_MAX_FILES} фото за раз.`);
+      return;
+    }
+    const toAdd = incoming.slice(0, room);
+    if(incoming.length > toAdd.length){
+      alert(`Максимум ${ANO_MAX_FILES} фото за раз. Додано перші ${toAdd.length}.`);
+    }
+    toAdd.forEach(f => { anoFiles.push(f); addThumb(anoThumbs, f, anoFiles); });
+  }
+
+  document.getElementById("anoGallery").addEventListener("change", (e) => {
+    addAnoFiles(e.target.files);
+    e.target.value = "";
+  });
+  document.getElementById("anoCamera").addEventListener("change", (e) => {
+    addAnoFiles(e.target.files);
+    e.target.value = "";
+  });
+
+  document.getElementById("anoRecognize").addEventListener("click", async () => {
+    if(anoFiles.length === 0){
+      anoStatus.textContent = "Додайте хоча б одне фото.";
+      anoStatus.className = "status-line err";
+      return;
+    }
+    const btn = document.getElementById("anoRecognize");
+    btn.disabled = true;
+    anoStatus.textContent = "Розпізнавання...";
+    anoStatus.className = "status-line";
+
+    let rawResults = [];
+    let skipped = 0;
+
+    try{
+      const combined = await buildCollage(anoFiles);
+      const records = await callGeminiStructured(combined.base64, combined.mime);
+      records.forEach(rec => {
+        const clean = {};
+        ORDER_FIELD_SCHEMA.forEach(k => clean[k] = (rec[k]!==undefined && rec[k]!==null) ? String(rec[k]).trim() : '');
+        if(!clean.numer_zlecenia){ skipped++; return; }
+        const idx = rawResults.findIndex(r => r.numer_zlecenia && r.numer_zlecenia === clean.numer_zlecenia);
+        if(idx >= 0) rawResults[idx] = mergeOrderRecord(rawResults[idx], clean);
+        else rawResults.push(clean);
+      });
+    }catch(err){
+      btn.disabled = false;
+      anoStatus.textContent = "Помилка: " + err.message;
+      anoStatus.className = "status-line err";
+      return;
+    }
+
+    btn.disabled = false;
+
+    if(rawResults.length === 0){
+      anoStatus.textContent = skipped > 0
+        ? `Не знайдено жодного зліценія з номером (пропущено ${skipped}).`
+        : "Зліценій не знайдено. Перевірте фото та спробуйте ще раз.";
+      anoStatus.className = "status-line err";
+      return;
+    }
+
+    anoStatus.textContent = `Знайдено зліценій: ${rawResults.length}` + (skipped > 0 ? ` (пропущено ${skipped} без номера)` : '');
+    anoStatus.className = "status-line ok";
+
+    anoReviewData = rawResults.map(rec => ({
+      date: rec.data_rozpoczecia || "",
+      machine: guessMachine(extractMachineCode(rec.maszyna_forma)),
+      numerZlecenia: rec.numer_zlecenia || ""
+    }));
+    renderAnoReview();
+  });
+
+  function renderAnoReview(){
+    document.getElementById("anoReviewWrap").style.display = "block";
+    document.querySelector("#overlayAddNewOrder .modal-actions").style.display = "none";
+    document.querySelector("#overlayAddNewOrder .method-grid").style.display = "none";
+    anoThumbs.style.display = "none";
+
+    const wrap = document.getElementById("anoReviewList");
+    wrap.innerHTML = anoReviewData.map((no, i) => `
+      <div class="review-card" data-idx="${i}">
+        <div class="rc-head"><span>Зліценіє ${i+1}</span></div>
+        <div class="row2">
+          <div class="field"><label>Дата початку</label><input type="text" class="rc-date" value="${escapeAttr(no.date)}"></div>
+          <div class="field"><label>Машина</label><select class="rc-machine"></select></div>
+        </div>
+        <div class="field"><label>Numer zlecenia</label><input type="text" class="rc-numer" value="${escapeAttr(no.numerZlecenia)}"></div>
+      </div>
+    `).join("");
+    wrap.querySelectorAll(".review-card").forEach((card, i) => {
+      fillMachineSelect(card.querySelector(".rc-machine"), anoReviewData[i].machine);
+    });
+  }
+
+  document.getElementById("anoBack").addEventListener("click", () => resetAddNewOrderModal());
+
+  document.getElementById("anoSaveAll").addEventListener("click", async () => {
+    const cards = document.querySelectorAll("#anoReviewList .review-card");
+    // Зліценіе з таким самим "Numer zlecenia" вже є в цій вкладці - не створюємо дубль.
+    const existingNumbers = new Set(
+      state.newOrders.map(no => (no.numerZlecenia || '').trim()).filter(Boolean)
+    );
+    const inserts = [];
+    let duplicates = 0;
+    cards.forEach((card) => {
+      const numer = card.querySelector(".rc-numer").value.trim();
+      if (numer && existingNumbers.has(numer)) { duplicates++; return; }
+      if (numer) existingNumbers.add(numer);
+      inserts.push(insertTrackerRow('new_order', {
+        date: card.querySelector(".rc-date").value.trim(),
+        machine: card.querySelector(".rc-machine").value || null,
+        numerZlecenia: numer
+      }));
+    });
+    const results = await Promise.all(inserts);
+    overlayAddNewOrder.classList.remove("open");
+    if(results.some(r => !r)) alert('Частину зліценій не вдалося зберегти на сервері.');
+    if(duplicates > 0) alert(`Пропущено як дублікати (за номером зліценія): ${duplicates}`);
+    syncTrackerFromServer();
+  });
+
   const overlayAddLabels = document.getElementById("overlayAddLabels");
   const alThumbs = document.getElementById("alThumbs");
   const alStatus = document.getElementById("alStatus");
