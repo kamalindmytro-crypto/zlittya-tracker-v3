@@ -445,6 +445,16 @@ footer{
 .mod-tracker .order-card.new-zlecenie .oc-label.oc-label-missing{ color:var(--text-dim); font-weight:400; }
 .mod-tracker .order-card.new-zlecenie .brought-wrap{ display:flex; align-items:center; gap:5px; margin-top:6px; }
 .mod-tracker .order-card.new-zlecenie .brought-wrap span{ font-size:10px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.03em; }
+/* Картки без коду етикетки - підсвічені зеленим, щоб було видно, що очікують етикетку */
+.mod-tracker .order-card.new-zlecenie.missing-label{ border-left-color:var(--green); }
+.mod-tracker .order-card.new-zlecenie.missing-label .oc-no{ color:var(--green); }
+.mod-tracker .order-card.new-zlecenie.missing-label .oc-main{ color:var(--green); }
+.mod-tracker .order-card.new-zlecenie.missing-label .oc-date{ color:var(--green); }
+/* Щойно додані картки (перші 10 хв) - підсвічені червоним, щоб було видно свіжі надходження */
+.mod-tracker .order-card.new-zlecenie.fresh-card{ border-left-color:var(--red); }
+.mod-tracker .order-card.new-zlecenie.fresh-card .oc-no{ color:var(--red); }
+.mod-tracker .order-card.new-zlecenie.fresh-card .oc-main{ color:var(--red); }
+.mod-tracker .order-card.new-zlecenie.fresh-card .oc-date{ color:var(--red); }
 </style>
 </head>
 <body>
@@ -1181,7 +1191,8 @@ document.querySelectorAll(".tab").forEach(t => {
       id: r.id,
       date: r.data.date || "",
       machine: r.data.machine || null,
-      numerZlecenia: r.data.numerZlecenia || ""
+      numerZlecenia: r.data.numerZlecenia || "",
+      createdAt: r.data.createdAt || 0
     }));
     state.labels = labelRows.map(r => ({
       id: r.id, raw: r.data.raw, digits: r.data.digits, matchedMachines: [], brought: false
@@ -1502,6 +1513,7 @@ document.querySelectorAll(".tab").forEach(t => {
     // Спочатку заявки, для яких вже знайдено співпадіння етикетки,
     // потім ті, що ще чекають; в межах групи - за датою початку.
     const arr = state.orders.slice().sort((a,b) => {
+      if (!!a.labelBrought !== !!b.labelBrought) return a.labelBrought ? 1 : -1;
       if (a.matched !== b.matched) return a.matched ? -1 : 1;
       return sortableDate(a.date).localeCompare(sortableDate(b.date));
     });
@@ -1533,21 +1545,29 @@ document.querySelectorAll(".tab").forEach(t => {
  
   const newOrdersList = document.getElementById("newOrdersList");
   function renderNewOrders(){
-    const arr = state.newOrders.slice().sort((a,b) => sortableDate(a.date).localeCompare(sortableDate(b.date)));
+    const arr = state.newOrders.slice().sort((a,b) => {
+      if (!!a.brought !== !!b.brought) return a.brought ? 1 : -1;
+      const aMissing = !extractDigits(a.labelCode);
+      const bMissing = !extractDigits(b.labelCode);
+      if (aMissing !== bMissing) return aMissing ? -1 : 1;
+      return sortableDate(a.date).localeCompare(sortableDate(b.date));
+    });
     if(arr.length === 0){
       newOrdersList.innerHTML = `<div class="empty">Немає нових зліценій.<br>Натисніть «Додати фото зліценій», щоб розпізнати їх з фото екрана.</div>`;
       return;
     }
     newOrdersList.innerHTML = arr.map(no => {
       const hasLabel = extractDigits(no.labelCode);
+      const isFresh = no.createdAt && (Date.now() - no.createdAt) < (10 * 60 * 1000);
+      const colorCls = isFresh ? 'fresh-card' : (hasLabel ? '' : 'missing-label');
       const labelLine = hasLabel
         ? `<div class="oc-label">${escapeHtml(no.labelCode.trim())}</div>`
         : `<div class="oc-label oc-label-missing">код етикетки невідомий</div>`;
       return `
-        <div class="order-card new-zlecenie" data-id="${no.id}" data-kind="neworder">
+        <div class="order-card new-zlecenie ${colorCls}" data-id="${no.id}" data-kind="neworder">
           <div class="oc-no">${escapeHtml(no.numerZlecenia || 'без номера')}</div>
-          <div class="oc-main">${escapeHtml(no.date || 'дата?')}</div>
-          <div class="oc-date">${escapeHtml(no.machine || 'машина?')}</div>
+          <div class="oc-main">${escapeHtml(no.machine || 'машина?')}</div>
+          <div class="oc-date">${escapeHtml(no.date || 'дата?')}</div>
           ${labelLine}
           <div class="brought-wrap"><div class="brought-dot ${no.brought ? 'on':''}"></div><span>${no.brought ? 'Принесено' : 'Не принесено'}</span></div>
         </div>`;
@@ -1556,7 +1576,10 @@ document.querySelectorAll(".tab").forEach(t => {
 
   const labelsList = document.getElementById("labelsList");
   function renderLabels(){
-    const arr = state.labels.slice().sort((a,b) => a.digits.localeCompare(b.digits));
+    const arr = state.labels.slice().sort((a,b) => {
+      if (!!a.brought !== !!b.brought) return a.brought ? 1 : -1;
+      return a.digits.localeCompare(b.digits);
+    });
     if(arr.length === 0){
       labelsList.innerHTML = `<div class="empty">Список етикеток порожній.<br>Натисніть «Додати етикетки».</div>`;
       return;
@@ -1725,6 +1748,7 @@ document.querySelectorAll(".tab").forEach(t => {
 
     // Той самий порядок, що й на екрані: знайдені (matched) заявки першими.
     const arr = state.orders.slice().sort((a,b) => {
+      if (!!a.labelBrought !== !!b.labelBrought) return a.labelBrought ? 1 : -1;
       if (a.matched !== b.matched) return a.matched ? -1 : 1;
       return sortableDate(a.date).localeCompare(sortableDate(b.date));
     });
@@ -2141,7 +2165,8 @@ document.querySelectorAll(".tab").forEach(t => {
       inserts.push(insertTrackerRow('new_order', {
         date: card.querySelector(".rc-date").value.trim(),
         machine: card.querySelector(".rc-machine").value || null,
-        numerZlecenia: numer
+        numerZlecenia: numer,
+        createdAt: Date.now()
       }));
     });
     const results = await Promise.all(inserts);
@@ -2256,6 +2281,7 @@ document.querySelectorAll(".tab").forEach(t => {
  
   // ---------- INIT ----------
   syncTrackerFromServer();
+  setInterval(renderNewOrders, 30000);
   sb.channel('tracker-changes')
     .on('postgres_changes', { event: '*', schema: 'public', table: TABLE }, function () { syncTrackerFromServer(); })
     .subscribe();
