@@ -427,6 +427,7 @@ footer{
 .mod-tracker .oc-brought-switch.on{ background:rgba(56,201,138,.18); border-color:var(--green); }
 .mod-tracker .oc-brought-switch.on::after{ transform:translateX(15px); background:var(--green); box-shadow:0 0 6px 1px rgba(56,201,138,.65); }
 
+.mod-tracker .order-card .oc-ilosc{ font-family:var(--mono); font-size:11px; color:var(--text-muted); margin-top:4px; }
 /* Зелена лампочка-індикатор "принесено", яка дублюється у Етикетках та Нових зліценіях */
 .mod-tracker .brought-dot{
   width:9px; height:9px; border-radius:50%; flex:none; background:var(--surface-3); border:1px solid var(--border);
@@ -504,6 +505,8 @@ footer{
 @media (prefers-reduced-motion: reduce){ .mod-hale .hl-m.live .hl-dot{ animation:none; } }
 
 /* інформаційна панель машини */
+.mod-tracker .hl-del{ margin-top:8px; width:100%; background:transparent; color:var(--red); border:1px solid var(--amber-dim); border-radius:7px; padding:7px; font-size:12px; font-weight:600; cursor:pointer; }
+.mod-tracker .hl-del:active{ background:rgba(227,91,61,.12); }
 .mod-tracker .hl-head{ display:flex; align-items:center; gap:10px; margin-bottom:4px; }
 .mod-tracker .hl-head h2{ margin:0; font-size:20px; font-family:var(--mono); }
 .mod-tracker .hl-live{
@@ -933,6 +936,23 @@ document.querySelectorAll(".tab").forEach(t => {
     });
   };
  
+  // Міст для вкладки Hale: видалення картки злиття (з підтвердженням у самій панелі Hale).
+  window.__zlDelete = function (id) {
+    const backup = machines;
+    machines = machines.filter(m => String(m.id) !== String(id));
+    saveCachedMachines(machines);
+    render();
+    return deleteMachineOnServer(id).then(function (ok) {
+      if (!ok) {
+        machines = backup;
+        saveCachedMachines(machines);
+        render();
+        alert('Не вдалося видалити на сервері. Перевірте інтернет.');
+      }
+      return ok;
+    });
+  };
+
   function parseDecimal(str) {
     if (typeof str !== 'string') return NaN;
     return parseFloat(str.trim().replace(',', '.'));
@@ -1242,6 +1262,13 @@ document.querySelectorAll(".tab").forEach(t => {
  
   // Міст для вкладки Hale: віддає стан трекера (заявки, нові зліценія, етикетки) - тільки читання.
   window.__trGet = function () { return state; };
+  // Міст для вкладки Hale: видалення заявки / зліценія / етикетки за id.
+  window.__trDelete = async function (id) {
+    const ok = await deleteTrackerRow(id);
+    if (!ok) alert('Не вдалося видалити на сервері.');
+    await syncTrackerFromServer();
+    return ok;
+  };
  
   function saveApiKeys(){ localStorage.setItem(LS_APIKEYS, JSON.stringify(state.apiKeys)); }
   function saveActiveKey(){ localStorage.setItem(LS_ACTIVE_KEY, String(state.activeKeyIndex)); }
@@ -1398,6 +1425,13 @@ document.querySelectorAll(".tab").forEach(t => {
       const match = num ? state.orders.find(o => (o.numerZlecenia || '').trim() === num) : null;
       no.labelCode = match ? match.labelCode : "";
       no.brought = match ? !!match.labelBrought : false;
+      no.ilosc = match ? (match.iloscNaZleceniu || "") : "";
+    });
+    // Заявки: "дата початку" береться з вкладки "Нові зліценія" (за Numer zlecenia); якщо збігу немає - власна дата заявки.
+    state.orders.forEach(o => {
+      const num = (o.numerZlecenia || '').trim();
+      const nm = num ? state.newOrders.find(no => (no.numerZlecenia || '').trim() === num && no.date) : null;
+      o.dateEff = nm ? nm.date : o.date;
     });
   }
  
@@ -1618,7 +1652,7 @@ document.querySelectorAll(".tab").forEach(t => {
     const arr = state.orders.slice().sort((a,b) => {
       if (!!a.labelBrought !== !!b.labelBrought) return a.labelBrought ? 1 : -1;
       if (a.matched !== b.matched) return a.matched ? -1 : 1;
-      return sortableDate(a.date).localeCompare(sortableDate(b.date));
+      return sortableDate(a.dateEff).localeCompare(sortableDate(b.dateEff));
     });
     if(arr.length === 0){
       ordersList.innerHTML = `<div class="empty">Немає заявок.<br>Натисніть «Додати фото заявок», щоб розпізнати їх з фото екрана.</div>`;
@@ -1636,7 +1670,7 @@ document.querySelectorAll(".tab").forEach(t => {
         <div class="order-card ${cls}" data-id="${o.id}" data-kind="order">
           <div class="oc-no">${escapeHtml(o.numerZlecenia || 'без номера')}</div>
           <div class="oc-main">${escapeHtml(mainLine)}</div>
-          <div class="oc-date">${escapeHtml(o.date || 'дата?')}</div>
+          <div class="oc-date">${escapeHtml(o.dateEff || 'дата?')}</div>
           ${badge}
           <div class="oc-brought-row">
             <span class="oc-brought-label">Етикетку принесено</span>
@@ -1671,6 +1705,7 @@ document.querySelectorAll(".tab").forEach(t => {
           <div class="oc-no">${escapeHtml(no.numerZlecenia || 'без номера')}</div>
           <div class="oc-main">${escapeHtml(no.machine || 'машина?')}</div>
           <div class="oc-date">${escapeHtml(no.date || 'дата?')}</div>
+          ${no.ilosc ? `<div class="oc-ilosc">Ilość: ${escapeHtml(no.ilosc)}</div>` : ''}
           ${labelLine}
           <div class="brought-wrap"><div class="brought-dot ${no.brought ? 'on':''}"></div><span>${no.brought ? 'Принесено' : 'Не принесено'}</span></div>
         </div>`;
@@ -1759,7 +1794,7 @@ document.querySelectorAll(".tab").forEach(t => {
     if(!o) return;
     editingOrderId = o.id;
     document.getElementById("odSub").textContent = o.matched ? " · знайдено на буфері" : " · очікує етикетки";
-    document.getElementById("odDate").value = o.date || "";
+    document.getElementById("odDate").value = o.dateEff || o.date || "";
     fillMachineSelect(document.getElementById("odMachine"), o.machine);
     document.getElementById("odNumer").value = o.numerZlecenia || "";
     document.getElementById("odKatalogowy").value = o.nrKatalogowy || "";
@@ -1853,7 +1888,7 @@ document.querySelectorAll(".tab").forEach(t => {
     const arr = state.orders.slice().sort((a,b) => {
       if (!!a.labelBrought !== !!b.labelBrought) return a.labelBrought ? 1 : -1;
       if (a.matched !== b.matched) return a.matched ? -1 : 1;
-      return sortableDate(a.date).localeCompare(sortableDate(b.date));
+      return sortableDate(a.dateEff).localeCompare(sortableDate(b.dateEff));
     });
 
     // Текст малюємо на canvas і вставляємо як зображення в PDF, бо вбудовані
@@ -1890,7 +1925,7 @@ document.querySelectorAll(".tab").forEach(t => {
         y = startNewPage();
       }
       const numer = o.numerZlecenia || 'без номера';
-      const dateLine = `ДАТА ПОЧАТКУ: ${o.date || '-'}`;
+      const dateLine = `ДАТА ПОЧАТКУ: ${o.dateEff || '-'}`;
       const code = extractDigits(o.labelCode) ? o.labelCode.trim() : (o.labelCode || '-');
       const machineLine = `${o.machine || 'машина?'} ${code}`;
 
@@ -2535,6 +2570,9 @@ document.querySelectorAll(".tab").forEach(t => {
   const modal = document.getElementById("haleModal");
   let openKey = null, openName = "", lastHtml = "";
 
+  function delBtn(kind, id) {
+    return `<button class="hl-del" data-act="del" data-kind="${kind}" data-id="${esc(id)}" type="button">🗑 Видалити</button>`;
+  }
   function kv(k, v) {
     if (v === "" || v == null) return "";
     return `<div class="hl-kv"><span>${k}</span><span>${esc(v)}</span></div>`;
@@ -2568,6 +2606,7 @@ document.querySelectorAll(".tab").forEach(t => {
         ${kv("Цикл", String(m.cycle).replace(".", ",") + " с")}
         ${kv("Злиття №", m.zlittyaNum)}
         ${kv("Етикетка №", m.etiketkaNum)}
+        ${delBtn("zl", m.id)}
       </div>`;
     });
     h += `</div>`;
@@ -2579,8 +2618,10 @@ document.querySelectorAll(".tab").forEach(t => {
       h += `<div class="hl-item no">
         ${kv("Numer zlecenia", o.numerZlecenia)}
         ${kv("Дата початку", o.date)}
+        ${kv("Ilość na zleceniu", o.ilosc)}
         ${kv("Код етикетки", o.labelCode)}
         <span class="hl-chip ${o.brought ? 'g' : ''}">${o.brought ? "Етикетку принесено" : "Етикетку не принесено"}</span>
+        ${delBtn("no", o.id)}
       </div>`;
     });
     h += `</div>`;
@@ -2591,7 +2632,7 @@ document.querySelectorAll(".tab").forEach(t => {
     orders.forEach(o => {
       h += `<div class="hl-item ${o.matched ? 'ok' : ''}">
         ${kv("Numer zlecenia", o.numerZlecenia)}
-        ${kv("Дата початку", o.date)}
+        ${kv("Дата початку", o.dateEff || o.date)}
         ${kv("Numer katalogowy", o.nrKatalogowy)}
         ${kv("Nazwa", o.nazwaProduktu)}
         ${kv("Код етикетки", o.labelCode)}
@@ -2599,6 +2640,7 @@ document.querySelectorAll(".tab").forEach(t => {
         ${kv("Ilość", o.iloscNaZleceniu)}
         <span class="hl-chip ${o.matched ? 'g' : 'r'}">${o.matched ? "Етикетка знайдена" : "Очікує етикетку"}</span>
         <span class="hl-chip ${o.labelBrought ? 'g' : ''}">${o.labelBrought ? "Принесено" : "Не принесено"}</span>
+        ${delBtn("ord", o.id)}
       </div>`;
     });
     h += `</div>`;
@@ -2608,7 +2650,8 @@ document.querySelectorAll(".tab").forEach(t => {
     if (!labels.length) h += `<div class="hl-empty">Немає знайдених етикеток.</div>`;
     labels.forEach(l => {
       h += `<div class="hl-item lb">${kv("Код", l.raw)}
-        <span class="hl-chip ${l.brought ? 'g' : ''}">${l.brought ? "Принесено" : "Не принесено"}</span></div>`;
+        <span class="hl-chip ${l.brought ? 'g' : ''}">${l.brought ? "Принесено" : "Не принесено"}</span>
+        ${delBtn("lb", l.id)}</div>`;
     });
     h += `</div>`;
 
@@ -2627,8 +2670,18 @@ document.querySelectorAll(".tab").forEach(t => {
     const g = e.target.closest(".hl-m");
     if (g) openInfo(g.dataset.key, g.dataset.name);
   });
-  overlay.addEventListener("click", (e) => {
-    if (e.target === overlay || e.target.closest("[data-act=close]")) closeInfo();
+  overlay.addEventListener("click", async (e) => {
+    if (e.target === overlay || e.target.closest("[data-act=close]")) { closeInfo(); return; }
+    const b = e.target.closest("[data-act=del]");
+    if (!b) return;
+    const names = { zl: "картку злиття", no: "зліценіє", ord: "заявку", lb: "етикетку" };
+    if (!confirm("Видалити " + names[b.dataset.kind] + "? Запис зникне і у відповідній вкладці.")) return;
+    const id = b.dataset.id;
+    if (b.dataset.kind === "zl") await window.__zlDelete(id);
+    else await window.__trDelete(id);
+    lastHtml = "";
+    renderInfo();
+    updateLive();
   });
 
   setInterval(function () { updateLive(); if (openKey) renderInfo(); }, 1000);
