@@ -455,6 +455,80 @@ footer{
 .mod-tracker .order-card.new-zlecenie.fresh-card .oc-no{ color:var(--red); }
 .mod-tracker .order-card.new-zlecenie.fresh-card .oc-main{ color:var(--red); }
 .mod-tracker .order-card.new-zlecenie.fresh-card .oc-date{ color:var(--red); }
+
+/* ======================= MODULE: HALE (схеми зал) ======================= */
+.mod-hale .hl-sub{ display:flex; gap:6px; margin-bottom:12px; }
+.mod-hale .hl-sub button{
+  flex:1; padding:11px 4px; cursor:pointer; background:#0e0820; color:#9a8fc7;
+  border:1.5px solid #2c2150; border-radius:10px; font-size:14px; font-weight:700; letter-spacing:.06em;
+  transition:color .2s, border-color .2s, box-shadow .2s;
+}
+.mod-hale .hl-sub button.active{
+  color:#fff; border-color:var(--c); text-shadow:0 0 8px var(--c);
+  box-shadow:0 0 12px var(--c), inset 0 0 12px color-mix(in srgb, var(--c) 35%, transparent);
+}
+.mod-hale .hl-sub button:nth-child(1){ --c:#00e5ff; }
+.mod-hale .hl-sub button:nth-child(2){ --c:#ff2bd6; }
+.mod-hale .hl-sub button:nth-child(3){ --c:#b6ff00; }
+.mod-hale .hl-legend{ display:flex; gap:14px; justify-content:center; margin:0 0 10px; font-size:12px; color:#bdb3e6; }
+.mod-hale .hl-legend span{ display:flex; align-items:center; gap:6px; }
+.mod-hale .hl-legend i{ width:12px; height:12px; border-radius:3px; border:2px solid var(--k); box-shadow:0 0 8px var(--k); }
+.mod-hale .hl-legend i.dot{ border-radius:50%; background:#39ff6a; border-color:#eaffee; box-shadow:0 0 8px #39ff6a; }
+.mod-hale .hl-view{ display:none; }
+.mod-hale .hl-view.active{ display:block; }
+.mod-hale svg{ width:100%; height:auto; display:block; }
+.mod-hale .hl-frame{
+  fill:rgba(138,91,255,.05); stroke:#8a5bff; stroke-width:3; stroke-linejoin:round;
+  filter:drop-shadow(0 0 4px #8a5bff) drop-shadow(0 0 12px rgba(138,91,255,.55));
+}
+.mod-hale .hl-wall{ fill:none; stroke:#5a3fb0; stroke-width:2; opacity:.8; }
+.mod-hale .hl-title{
+  fill:#d9c9ff; font-weight:800; letter-spacing:2px; text-anchor:middle; dominant-baseline:central;
+  filter:drop-shadow(0 0 6px #8a5bff);
+}
+.mod-hale .hl-m{ cursor:pointer; }
+.mod-hale .hl-m.S{ --k:#00e5ff; } .mod-hale .hl-m.J{ --k:#ff2bd6; } .mod-hale .hl-m.V{ --k:#b6ff00; }
+.mod-hale .hl-m rect{
+  fill:color-mix(in srgb, var(--k) 12%, #0a0618); stroke:var(--k); stroke-width:3;
+  filter:drop-shadow(0 0 3px var(--k)) drop-shadow(0 0 10px var(--k)); transition:fill .2s;
+}
+.mod-hale .hl-m:active rect{ fill:color-mix(in srgb, var(--k) 45%, #0a0618); }
+.mod-hale .hl-m text{
+  fill:#fff; font-weight:800; text-anchor:middle; dominant-baseline:central; pointer-events:none;
+  filter:drop-shadow(0 0 4px var(--k));
+}
+.mod-hale .hl-dot{ fill:#39ff6a; stroke:#eaffee; stroke-width:1.5; opacity:0; pointer-events:none;
+  filter:drop-shadow(0 0 4px #39ff6a) drop-shadow(0 0 9px #39ff6a); }
+.mod-hale .hl-m.live .hl-dot{ opacity:1; animation:hl-pulse 1.8s ease-in-out infinite; }
+@keyframes hl-pulse{ 0%,100%{ opacity:1; } 50%{ opacity:.55; } }
+@media (prefers-reduced-motion: reduce){ .mod-hale .hl-m.live .hl-dot{ animation:none; } }
+
+/* інформаційна панель машини */
+.mod-tracker .hl-head{ display:flex; align-items:center; gap:10px; margin-bottom:4px; }
+.mod-tracker .hl-head h2{ margin:0; font-size:20px; font-family:var(--mono); }
+.mod-tracker .hl-live{
+  font-size:10.5px; font-weight:700; color:#39ff6a; display:flex; align-items:center; gap:5px; letter-spacing:.04em;
+}
+.mod-tracker .hl-live::before{ content:""; width:9px; height:9px; border-radius:50%; background:#39ff6a; box-shadow:0 0 8px 2px rgba(57,255,106,.7); }
+.mod-tracker .hl-close{ margin-left:auto; background:transparent; border:none; color:var(--text-dim); font-size:18px; padding:4px 8px; cursor:pointer; }
+.mod-tracker .hl-sec{ margin-top:16px; }
+.mod-tracker .hl-sec-title{
+  font-size:11.5px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.05em;
+  border-bottom:1px solid var(--border); padding-bottom:5px; margin-bottom:8px; display:flex; justify-content:space-between;
+}
+.mod-tracker .hl-item{ background:var(--surface-2); border:1px solid var(--border); border-left:3px solid var(--amber); border-radius:8px; padding:9px 11px; margin-bottom:8px; font-size:12.5px; }
+.mod-tracker .hl-item.zl{ border-left-color:#ff9f1c; }
+.mod-tracker .hl-item.no{ border-left-color:#2f7cf6; }
+.mod-tracker .hl-item.ok{ border-left-color:var(--green); }
+.mod-tracker .hl-item.lb{ border-left-color:var(--green); }
+.mod-tracker .hl-kv{ display:flex; justify-content:space-between; gap:10px; padding:2px 0; }
+.mod-tracker .hl-kv span:first-child{ color:var(--text-dim); flex:none; }
+.mod-tracker .hl-kv span:last-child{ text-align:right; font-family:var(--mono); word-break:break-word; }
+.mod-tracker .hl-big{ font-family:var(--mono); font-size:24px; font-weight:700; margin-bottom:4px; }
+.mod-tracker .hl-empty{ color:var(--text-dim); font-size:12px; padding:4px 0; }
+.mod-tracker .hl-chip{ display:inline-block; font-size:10.5px; font-weight:700; padding:2px 7px; border-radius:20px; margin:4px 4px 0 0; background:var(--surface-3); color:var(--text-muted); }
+.mod-tracker .hl-chip.g{ color:var(--green); background:rgba(56,201,138,.12); }
+.mod-tracker .hl-chip.r{ color:var(--red); background:rgba(227,91,61,.12); }
 </style>
 </head>
 <body>
@@ -467,6 +541,7 @@ footer{
       <span id="clock">—</span>
     </div>
     <div class="tabs">
+      <button class="tab" data-tab="hale">Hale</button>
       <button class="tab active" data-tab="zlyttya">Злиття</button>
       <button class="tab" data-tab="neworders">Нові зліценія</button>
       <button class="tab" data-tab="orders">Заявки</button>
@@ -537,6 +612,18 @@ footer{
       </div>
       <button class="btn btn-danger btn-block" id="btnResetMachines">Скинути список машин до типового</button>
     </section>
+    <!-- ======================= HALE (схеми зал) ======================= -->
+    <section id="view-hale" class="mod-hale">
+      <div class="hl-sub" id="haleSub"></div>
+      <div class="hl-legend">
+        <span style="--k:#00e5ff"><i></i>S</span>
+        <span style="--k:#ff2bd6"><i></i>J</span>
+        <span style="--k:#b6ff00"><i></i>V</span>
+        <span><i class="dot"></i>у злитті</span>
+      </div>
+      <div id="haleViews"></div>
+    </section>
+
   </main>
  
   <footer>Дані спільні для всіх, хто відкриває це посилання, і оновлюються автоматично в реальному часі.</footer>
@@ -747,6 +834,11 @@ footer{
   </div>
 </div>
  
+<!-- ======================= МОДАЛКА: HALE (інфо по машині) ======================= -->
+<div class="mod-tracker overlay" id="overlayHale">
+  <div class="modal" id="haleModal"></div>
+</div>
+
 <script>
 /* ======================= ЗАГАЛЬНА ІНІЦІАЛІЗАЦІЯ (спільна для обох модулів) ======================= */
 if (window.Telegram && window.Telegram.WebApp) {
@@ -832,6 +924,14 @@ document.querySelectorAll(".tab").forEach(t => {
  
   let machines = loadCachedMachines();
   let pendingDeleteId = null;
+ 
+  // Міст для вкладки Hale: віддає картки злиття з обрахунками (тільки читання).
+  window.__zlGet = function () {
+    return machines.map(function (m) {
+      var c = computeMachine(m);
+      return { m: m, c: c, st: stateFor(c.remainingSeconds, c.remainingPieces) };
+    });
+  };
  
   function parseDecimal(str) {
     if (typeof str !== 'string') return NaN;
@@ -1139,6 +1239,9 @@ document.querySelectorAll(".tab").forEach(t => {
     batchSize: loadBatchSize(),
     batchMode: loadBatchMode()
   };
+ 
+  // Міст для вкладки Hale: віддає стан трекера (заявки, нові зліценія, етикетки) - тільки читання.
+  window.__trGet = function () { return state; };
  
   function saveApiKeys(){ localStorage.setItem(LS_APIKEYS, JSON.stringify(state.apiKeys)); }
   function saveActiveKey(){ localStorage.setItem(LS_ACTIVE_KEY, String(state.activeKeyIndex)); }
@@ -2286,6 +2389,252 @@ document.querySelectorAll(".tab").forEach(t => {
     .on('postgres_changes', { event: '*', schema: 'public', table: TABLE }, function () { syncTrackerFromServer(); })
     .subscribe();
 })();
+</script>
+
+<script>
+/* ======================= МОДУЛЬ "HALE" ======================= */
+(function () {
+  "use strict";
+
+  // Координати відповідають плану цехів. m: [назва, x, y, w, h, поворот?]
+  const DATA = {
+    Nowa: {
+      viewBox: [20, 215, 780, 860], font: 31, titleFont: 32,
+      frames: [
+        "M35 230 H642 V522 H35 Z",
+        "M35 522 H648 V553 H780 V660 H35 Z",
+        "M35 660 H780 V850 C780 960 730 1030 560 1060 C380 1085 120 1070 45 990 Z"
+      ],
+      walls: [],
+      titles: [["HALA 1", 122, 452], ["HALA 2", 722, 597], ["HALA 2a", 357, 778]],
+      m: [
+        ["S-110", 67, 248, 62, 135], ["J-126", 162, 247, 65, 133], ["S-99", 259, 250, 65, 133],
+        ["S-111", 451, 250, 62, 133], ["J-129", 547, 250, 62, 133],
+        ["S-113", 219, 453, 128, 55], ["J-121", 382, 453, 126, 55],
+        ["S-107", 72, 594, 128, 52],
+        ["J-115", 241, 557, 128, 55, -62], ["J-122", 316, 553, 128, 55, -62],
+        ["J-116", 391, 551, 128, 55, -62], ["J-125", 476, 556, 128, 55, -62],
+        ["J-117", 75, 674, 126, 56], ["S-103", 295, 680, 124, 54],
+        ["J-118", 447, 678, 126, 54], ["S-102", 622, 680, 126, 54],
+        ["J-130", 77, 781, 124, 56], ["S-109", 449, 776, 124, 54], ["J-119", 622, 775, 124, 54]
+      ]
+    },
+    Stara: {
+      viewBox: [1135, 225, 1010, 460], font: 29, titleFont: 32,
+      frames: [
+        "M1143 232 H1517 V596 H1143 Z",
+        "M1517 232 H1960 V596 H1517 Z",
+        "M1960 232 H2138 V596 H1960 Z"
+      ],
+      walls: [
+        "M1430 235 V415", "M1567 505 V596", "M1567 505 H1960",
+        "M1657 505 V596", "M1810 505 V596", "M1903 505 V596",
+        "M1520 290 H1560 V335 H1530"
+      ],
+      titles: [["HALA 7a", 1213, 515], ["HALA 7b", 1697, 448], ["HALA 7c", 2048, 645]],
+      m: [
+        ["S-63", 1247, 272, 130, 55, 30], ["S-104", 1247, 377, 130, 55, 30],
+        ["S-108", 1682, 285, 45, 98], ["V-85", 1754, 245, 45, 135],
+        ["S-98", 1827, 246, 45, 135], ["S-101", 1899, 250, 45, 132],
+        ["S-100", 1817, 447, 128, 45],
+        ["V-93", 1978, 250, 42, 115], ["V-71", 2082, 250, 40, 100],
+        ["V-95", 2017, 398, 103, 48], ["V-94", 2017, 455, 103, 34],
+        ["V-80", 2017, 499, 103, 34], ["V-79", 2017, 543, 103, 34]
+      ]
+    },
+    Nisky: {
+      viewBox: [25, 1070, 1260, 400], font: 36, titleFont: 38,
+      frames: ["M35 1458 V1218 L155 1082 H1267 V1458 Z"],
+      walls: ["M208 1118 H368 V1228 H208 Z", "M438 1112 H586 V1220 H438 Z", "M205 1228 V1455"],
+      titles: [["HALA 4", 695, 1135]],
+      m: [
+        ["S-105", 220, 1280, 75, 160], ["S-114", 302, 1278, 75, 160],
+        ["S-112", 385, 1275, 75, 160], ["J-127", 465, 1273, 75, 160],
+        ["S-97", 547, 1272, 75, 160], ["S-96", 628, 1270, 75, 160],
+        ["J-120", 710, 1267, 75, 160], ["S-131", 790, 1205, 73, 215],
+        ["S-128", 951, 1198, 70, 215], ["S-106", 1030, 1235, 70, 215],
+        ["J-124", 1110, 1195, 70, 215], ["S-123", 1190, 1192, 70, 215]
+      ]
+    }
+  };
+
+  // "S-110", "S110W", "S 110P" -> "S110": єдиний ключ для зв'язку схеми з даними вкладок.
+  function keyOf(s) {
+    const m = String(s || "").match(/([A-Za-z])\s*-?\s*(\d{2,4})/);
+    return m ? (m[1] + m[2]).toUpperCase() : null;
+  }
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+  function pad(n) { return n < 10 ? "0" + n : "" + n; }
+  function fmtDur(sec) {
+    if (sec <= 0) return "00:00:00";
+    const s = Math.floor(sec), d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600),
+          mi = Math.floor((s % 3600) / 60), se = s % 60;
+    return (d > 0 ? d + "д " : "") + pad(h) + ":" + pad(mi) + ":" + pad(se);
+  }
+  function fmtDT(d) {
+    return pad(d.getDate()) + "." + pad(d.getMonth() + 1) + "." + d.getFullYear() + " " + pad(d.getHours()) + ":" + pad(d.getMinutes());
+  }
+  const nf = new Intl.NumberFormat("ru-RU");
+
+  function build(d) {
+    let out = "";
+    d.frames.forEach(p => out += `<path class="hl-frame" d="${p}"/>`);
+    d.walls.forEach(p => out += `<path class="hl-wall" d="${p}"/>`);
+    d.titles.forEach(([t, x, y]) => out += `<text class="hl-title" style="font-size:${d.titleFont}px" x="${x}" y="${y}">${t}</text>`);
+    d.m.forEach(([n, x, y, w, h, r]) => {
+      const cx = x + w / 2, cy = y + h / 2;
+      const vertical = h > w * 1.3;
+      const fs = Math.min(d.font, (vertical ? w : h) * 0.72);
+      const tf = vertical ? ` transform="rotate(-90 ${cx} ${cy})"` : "";
+      const g = r ? ` transform="rotate(${r} ${cx} ${cy})"` : "";
+      out += `<g class="hl-m ${n[0]}" data-key="${keyOf(n)}" data-name="${n}"${g}>`
+           + `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="7"/>`
+           + `<text${tf} x="${cx}" y="${cy + 1}" style="font-size:${fs}px">${n}</text>`
+           + `<circle class="hl-dot" cx="${x + w - 10}" cy="${y + 10}" r="6.5"/></g>`;
+    });
+    const [vx, vy, vw, vh] = d.viewBox;
+    return `<svg viewBox="${vx} ${vy} ${vw} ${vh}" role="img" aria-label="Схема зал">${out}</svg>`;
+  }
+
+  const sub = document.getElementById("haleSub");
+  const views = document.getElementById("haleViews");
+  Object.keys(DATA).forEach((name, i) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.textContent = name; b.dataset.v = name;
+    if (i === 0) b.classList.add("active");
+    sub.appendChild(b);
+    const v = document.createElement("div");
+    v.className = "hl-view" + (i === 0 ? " active" : "");
+    v.dataset.v = name;
+    v.innerHTML = build(DATA[name]);
+    views.appendChild(v);
+  });
+  sub.addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-v]");
+    if (!b) return;
+    sub.querySelectorAll("button").forEach(x => x.classList.toggle("active", x === b));
+    views.querySelectorAll(".hl-view").forEach(x => x.classList.toggle("active", x.dataset.v === b.dataset.v));
+  });
+
+  // ---------- Зелений індикатор: машина зараз у вкладці "Злиття" (є незавершена картка) ----------
+  function activeKeys() {
+    const zl = window.__zlGet ? window.__zlGet() : [];
+    const set = new Set();
+    zl.forEach(x => { if (x.c.remainingPieces > 0) set.add(keyOf(x.m.machine)); });
+    return set;
+  }
+  function updateLive() {
+    const act = activeKeys();
+    views.querySelectorAll(".hl-m").forEach(g => g.classList.toggle("live", act.has(g.dataset.key)));
+  }
+
+  // ---------- Панель з усією інформацією по машині ----------
+  const overlay = document.getElementById("overlayHale");
+  const modal = document.getElementById("haleModal");
+  let openKey = null, openName = "", lastHtml = "";
+
+  function kv(k, v) {
+    if (v === "" || v == null) return "";
+    return `<div class="hl-kv"><span>${k}</span><span>${esc(v)}</span></div>`;
+  }
+
+  function renderInfo() {
+    if (!openKey) return;
+    const zl = (window.__zlGet ? window.__zlGet() : []).filter(x => keyOf(x.m.machine) === openKey);
+    const st = window.__trGet ? window.__trGet() : { orders: [], newOrders: [], labels: [] };
+    const newOrders = st.newOrders.filter(o => keyOf(o.machine) === openKey);
+    const orders = st.orders.filter(o => keyOf(o.machine) === openKey);
+    const labels = st.labels.filter(l => (l.matchedMachines || []).some(mm => keyOf(mm) === openKey));
+    const live = zl.some(x => x.c.remainingPieces > 0);
+    const stLabel = { done: "Готово", danger: "Терміново", warn: "Скоро", ok: "В роботі" };
+
+    let h = `<div class="hl-head"><h2>${esc(openName)}</h2>${live ? '<span class="hl-live">У ЗЛИТТІ</span>' : ''}
+      <button class="hl-close" data-act="close" type="button">✕</button></div>`;
+
+    // Злиття
+    h += `<div class="hl-sec"><div class="hl-sec-title"><span>Злиття</span><span>${zl.length}</span></div>`;
+    if (!zl.length) h += `<div class="hl-empty">Немає активних карток злиття.</div>`;
+    zl.forEach(x => {
+      const m = x.m, c = x.c;
+      h += `<div class="hl-item zl">
+        <div class="hl-big">${fmtDur(c.remainingSeconds)}</div>
+        ${kv("Статус", stLabel[x.st])}
+        ${kv("Лишилось шт", nf.format(c.remainingPieces))}
+        ${kv("Зроблено / всього", nf.format(c.done) + " / " + nf.format(m.total))}
+        ${kv("Кінець злиття", fmtDT(c.finishDate))}
+        ${kv("Незаконч. палета", "№" + m.palletNum + " · " + m.onCurrent + "/" + m.perPallet + " шт")}
+        ${kv("Цикл", String(m.cycle).replace(".", ",") + " с")}
+        ${kv("Злиття №", m.zlittyaNum)}
+        ${kv("Етикетка №", m.etiketkaNum)}
+      </div>`;
+    });
+    h += `</div>`;
+
+    // Нові зліценія
+    h += `<div class="hl-sec"><div class="hl-sec-title"><span>Нові зліценія</span><span>${newOrders.length}</span></div>`;
+    if (!newOrders.length) h += `<div class="hl-empty">Немає.</div>`;
+    newOrders.forEach(o => {
+      h += `<div class="hl-item no">
+        ${kv("Numer zlecenia", o.numerZlecenia)}
+        ${kv("Дата початку", o.date)}
+        ${kv("Код етикетки", o.labelCode)}
+        <span class="hl-chip ${o.brought ? 'g' : ''}">${o.brought ? "Етикетку принесено" : "Етикетку не принесено"}</span>
+      </div>`;
+    });
+    h += `</div>`;
+
+    // Заявки
+    h += `<div class="hl-sec"><div class="hl-sec-title"><span>Заявки</span><span>${orders.length}</span></div>`;
+    if (!orders.length) h += `<div class="hl-empty">Немає.</div>`;
+    orders.forEach(o => {
+      h += `<div class="hl-item ${o.matched ? 'ok' : ''}">
+        ${kv("Numer zlecenia", o.numerZlecenia)}
+        ${kv("Дата початку", o.date)}
+        ${kv("Numer katalogowy", o.nrKatalogowy)}
+        ${kv("Nazwa", o.nazwaProduktu)}
+        ${kv("Код етикетки", o.labelCode)}
+        ${kv("Uwagi do zlecenia", o.uwagiZlecenia)}
+        ${kv("Ilość", o.iloscNaZleceniu)}
+        <span class="hl-chip ${o.matched ? 'g' : 'r'}">${o.matched ? "Етикетка знайдена" : "Очікує етикетку"}</span>
+        <span class="hl-chip ${o.labelBrought ? 'g' : ''}">${o.labelBrought ? "Принесено" : "Не принесено"}</span>
+      </div>`;
+    });
+    h += `</div>`;
+
+    // Етикетки
+    h += `<div class="hl-sec"><div class="hl-sec-title"><span>Етикетки</span><span>${labels.length}</span></div>`;
+    if (!labels.length) h += `<div class="hl-empty">Немає знайдених етикеток.</div>`;
+    labels.forEach(l => {
+      h += `<div class="hl-item lb">${kv("Код", l.raw)}
+        <span class="hl-chip ${l.brought ? 'g' : ''}">${l.brought ? "Принесено" : "Не принесено"}</span></div>`;
+    });
+    h += `</div>`;
+
+    if (h !== lastHtml) { modal.innerHTML = h; lastHtml = h; }
+  }
+
+  function openInfo(key, name) {
+    openKey = key; openName = name; lastHtml = "";
+    renderInfo();
+    modal.scrollTop = 0;
+    overlay.classList.add("open");
+  }
+  function closeInfo() { openKey = null; overlay.classList.remove("open"); }
+
+  views.addEventListener("click", (e) => {
+    const g = e.target.closest(".hl-m");
+    if (g) openInfo(g.dataset.key, g.dataset.name);
+  });
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay || e.target.closest("[data-act=close]")) closeInfo();
+  });
+
+  setInterval(function () { updateLive(); if (openKey) renderInfo(); }, 1000);
+  updateLive();
+})();
+
 </script>
 </body>
 </html>
