@@ -504,10 +504,17 @@ footer{
 @keyframes hl-pulse{ 0%,100%{ opacity:1; } 50%{ opacity:.55; } }
 @media (prefers-reduced-motion: reduce){ .mod-hale .hl-m.live .hl-dot{ animation:none; } }
 .mod-hale .hl-count{ text-align:center; margin:0 0 10px; font-size:13px; font-weight:700; letter-spacing:.04em; color:#00e5ff; text-shadow:0 0 8px #00e5ff; }
-/* машина з будь-якою інформацією плавно і повільно "дихає" */
-.mod-hale .hl-m.has-info rect{ animation:hl-breathe 5s ease-in-out infinite; }
-@keyframes hl-breathe{ 0%,100%{ opacity:1; } 50%{ opacity:.5; } }
-@media (prefers-reduced-motion: reduce){ .mod-hale .hl-m.has-info rect{ animation:none; } }
+/* машина, на якій є зліценіє, "працює": рамка біжить по колу + заливка пульсує */
+.mod-hale .hl-m.working rect{
+  stroke-dasharray:16 9;
+  animation:hl-march 1s linear infinite, hl-fill 2.2s ease-in-out infinite;
+}
+@keyframes hl-march{ to{ stroke-dashoffset:-25; } }
+@keyframes hl-fill{
+  0%,100%{ fill:color-mix(in srgb, var(--k) 12%, #0a0618); }
+  50%{ fill:color-mix(in srgb, var(--k) 60%, #0a0618); }
+}
+@media (prefers-reduced-motion: reduce){ .mod-hale .hl-m.working rect{ animation:none; stroke-dasharray:none; } }
 
 /* інформаційна панель машини */
 .mod-tracker .hl-card{ background:var(--surface-2); border:1px solid var(--border); border-left:3px solid #2f7cf6; border-radius:8px; padding:9px 11px; margin-bottom:8px; font-size:12.5px; cursor:pointer; }
@@ -562,8 +569,8 @@ footer{
       <span id="clock">—</span>
     </div>
     <div class="tabs">
-      <button class="tab" data-tab="hale">Hale</button>
-      <button class="tab active" data-tab="zlyttya">Злиття</button>
+      <button class="tab active" data-tab="hale">Hale</button>
+      <button class="tab" data-tab="zlyttya">Злиття</button>
       <button class="tab" data-tab="neworders">Нові зліценія</button>
       <button class="tab" data-tab="orders">Заявки</button>
       <button class="tab" data-tab="labels">Етикетки</button>
@@ -573,7 +580,7 @@ footer{
  
   <main>
     <!-- ======================= ЗЛИТТЯ ======================= -->
-    <section id="view-zlyttya" class="mod-zlyttya active">
+    <section id="view-zlyttya" class="mod-zlyttya">
       <div class="toolbar">
         <button class="btn btn-primary btn-add-machine" id="openAddPanelBtn">+ Добавить машину</button>
       </div>
@@ -634,7 +641,7 @@ footer{
       <button class="btn btn-danger btn-block" id="btnResetMachines">Скинути список машин до типового</button>
     </section>
     <!-- ======================= HALE (схеми зал) ======================= -->
-    <section id="view-hale" class="mod-hale">
+    <section id="view-hale" class="mod-hale active">
       <div class="hl-sub" id="haleSub"></div>
       <div class="hl-legend">
         <span style="--k:#00e5ff"><i></i>S</span>
@@ -2601,12 +2608,13 @@ document.querySelectorAll(".tab").forEach(t => {
     st.newOrders.forEach(o => info.add(keyOf(o.machine)));
     st.orders.forEach(o => info.add(keyOf(o.machine)));
     st.labels.forEach(l => (l.matchedMachines || []).forEach(mm => info.add(keyOf(mm))));
+    const inProgress = new Set();
+    st.newOrders.forEach(o => { const k = keyOf(o.machine); if (k) inProgress.add(k); });
     views.querySelectorAll(".hl-m").forEach(g => {
       g.classList.toggle("live", act.has(g.dataset.key));
       g.classList.toggle("has-info", info.has(g.dataset.key));
+      g.classList.toggle("working", inProgress.has(g.dataset.key));
     });
-    const inProgress = new Set();
-    st.newOrders.forEach(o => { const k = keyOf(o.machine); if (k) inProgress.add(k); });
     const c = document.getElementById("haleCount");
     if (c) c.textContent = "Машин у ході: " + inProgress.size;
   }
