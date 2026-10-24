@@ -503,8 +503,26 @@ footer{
 .mod-hale .hl-m.live .hl-dot{ opacity:1; animation:hl-pulse 1.8s ease-in-out infinite; }
 @keyframes hl-pulse{ 0%,100%{ opacity:1; } 50%{ opacity:.55; } }
 @media (prefers-reduced-motion: reduce){ .mod-hale .hl-m.live .hl-dot{ animation:none; } }
+.mod-hale .hl-count{ text-align:center; margin:0 0 10px; font-size:13px; font-weight:700; letter-spacing:.04em; color:#00e5ff; text-shadow:0 0 8px #00e5ff; }
+/* машина з будь-якою інформацією плавно і повільно "дихає" */
+.mod-hale .hl-m.has-info rect{ animation:hl-breathe 5s ease-in-out infinite; }
+@keyframes hl-breathe{ 0%,100%{ opacity:1; } 50%{ opacity:.5; } }
+@media (prefers-reduced-motion: reduce){ .mod-hale .hl-m.has-info rect{ animation:none; } }
 
 /* інформаційна панель машини */
+.mod-tracker .hl-card{ background:var(--surface-2); border:1px solid var(--border); border-left:3px solid #2f7cf6; border-radius:8px; padding:9px 11px; margin-bottom:8px; font-size:12.5px; cursor:pointer; }
+.mod-tracker .hl-card.past{ opacity:.55; }
+.mod-tracker .hl-card-head{ display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:4px; }
+.mod-tracker .hl-num{ font-family:var(--mono); font-weight:700; font-size:13px; color:#5a9bff; word-break:break-all; }
+.mod-tracker .hl-x{ flex:none; width:22px; height:22px; padding:0; background:transparent; border:1px solid var(--amber-dim); color:var(--red); border-radius:5px; font-size:12px; line-height:1; cursor:pointer; }
+.mod-tracker .hl-xrow{ display:flex; justify-content:flex-end; margin-top:6px; }
+.mod-tracker .hl-chip.hl-overdue{ margin:0; font-size:9.5px; letter-spacing:.05em; border:1px solid var(--red); }
+.mod-tracker .hl-card.past{ border-left-color:var(--red); }
+.mod-tracker .hl-kv span.hl-label{ color:#39ff6a; font-weight:700; text-shadow:0 0 6px #39ff6a, 0 0 14px rgba(57,255,106,.7); }
+.mod-tracker .hl-brought{ display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:8px; padding-top:8px; border-top:1px solid var(--border); font-size:10.5px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.03em; }
+.mod-tracker .hl-brought .oc-brought-switch.dis{ opacity:.35; pointer-events:none; }
+.mod-tracker .hl-detail{ margin-top:8px; padding-top:8px; border-top:1px dashed var(--border); cursor:default; }
+.mod-tracker .hl-hint{ font-size:10.5px; color:var(--text-dim); margin-top:6px; }
 .mod-tracker .hl-del{ margin-top:8px; width:100%; background:transparent; color:var(--red); border:1px solid var(--amber-dim); border-radius:7px; padding:7px; font-size:12px; font-weight:600; cursor:pointer; }
 .mod-tracker .hl-del:active{ background:rgba(227,91,61,.12); }
 .mod-tracker .hl-head{ display:flex; align-items:center; gap:10px; margin-bottom:4px; }
@@ -624,6 +642,7 @@ footer{
         <span style="--k:#b6ff00"><i></i>V</span>
         <span><i class="dot"></i>у злитті</span>
       </div>
+      <div class="hl-count" id="haleCount"></div>
       <div id="haleViews"></div>
     </section>
 
@@ -1263,6 +1282,19 @@ document.querySelectorAll(".tab").forEach(t => {
   // Міст для вкладки Hale: віддає стан трекера (заявки, нові зліценія, етикетки) - тільки читання.
   window.__trGet = function () { return state; };
   // Міст для вкладки Hale: видалення заявки / зліценія / етикетки за id.
+  // Міст для вкладки Hale: перемикач "Етикетку принесено" на заявці.
+  window.__trToggleBrought = async function (id) {
+    const o = state.orders.find(x => String(x.id) === String(id));
+    if (!o) return false;
+    const updated = await updateTrackerRow(o.id, 'order', {
+      date: o.date, machine: o.machine, numerZlecenia: o.numerZlecenia,
+      nrKatalogowy: o.nrKatalogowy, nazwaProduktu: o.nazwaProduktu, labelCode: o.labelCode,
+      uwagiZlecenia: o.uwagiZlecenia, iloscNaZleceniu: o.iloscNaZleceniu, labelBrought: !o.labelBrought
+    });
+    if (!updated) alert('Не вдалося зберегти статус на сервері.');
+    await syncTrackerFromServer();
+    return !!updated;
+  };
   window.__trDelete = async function (id) {
     const ok = await deleteTrackerRow(id);
     if (!ok) alert('Не вдалося видалити на сервері.');
@@ -2562,7 +2594,21 @@ document.querySelectorAll(".tab").forEach(t => {
   }
   function updateLive() {
     const act = activeKeys();
-    views.querySelectorAll(".hl-m").forEach(g => g.classList.toggle("live", act.has(g.dataset.key)));
+    const st = window.__trGet ? window.__trGet() : { orders: [], newOrders: [], labels: [] };
+    const zl = window.__zlGet ? window.__zlGet() : [];
+    const info = new Set();
+    zl.forEach(x => info.add(keyOf(x.m.machine)));
+    st.newOrders.forEach(o => info.add(keyOf(o.machine)));
+    st.orders.forEach(o => info.add(keyOf(o.machine)));
+    st.labels.forEach(l => (l.matchedMachines || []).forEach(mm => info.add(keyOf(mm))));
+    views.querySelectorAll(".hl-m").forEach(g => {
+      g.classList.toggle("live", act.has(g.dataset.key));
+      g.classList.toggle("has-info", info.has(g.dataset.key));
+    });
+    const inProgress = new Set();
+    st.newOrders.forEach(o => { const k = keyOf(o.machine); if (k) inProgress.add(k); });
+    const c = document.getElementById("haleCount");
+    if (c) c.textContent = "Машин у ході: " + inProgress.size;
   }
 
   // ---------- Панель з усією інформацією по машині ----------
@@ -2570,8 +2616,22 @@ document.querySelectorAll(".tab").forEach(t => {
   const modal = document.getElementById("haleModal");
   let openKey = null, openName = "", lastHtml = "";
 
+  // Сортування за датою початку: майбутні/сьогоднішні зростаюче, минулі - в кінець, без дати - в самий кінець.
+  function dateVal(str) {
+    const m = String(str || "").trim().match(/^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})$/);
+    return m ? new Date(+m[3], +m[2] - 1, +m[1]).getTime() : null;
+  }
+  function todayStart() { const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime(); }
+  function isPast(str) { const v = dateVal(str); return v !== null && v < todayStart(); }
+  function sortByDate(arr, get) {
+    const t = todayStart();
+    const rank = x => { const v = dateVal(get(x)); return v === null ? [2, 0] : (v >= t ? [0, v] : [1, -v]); };
+    return arr.slice().sort((a, b) => { const ra = rank(a), rb = rank(b); return (ra[0] - rb[0]) || (ra[1] - rb[1]); });
+  }
+  const expanded = new Set();
+
   function delBtn(kind, id) {
-    return `<button class="hl-del" data-act="del" data-kind="${kind}" data-id="${esc(id)}" type="button">🗑 Видалити</button>`;
+    return `<div class="hl-xrow"><button class="hl-x" data-act="del" data-kind="${kind}" data-id="${esc(id)}" type="button" title="Видалити">✕</button></div>`;
   }
   function kv(k, v) {
     if (v === "" || v == null) return "";
@@ -2611,39 +2671,65 @@ document.querySelectorAll(".tab").forEach(t => {
     });
     h += `</div>`;
 
-    // Нові зліценія
+    // Нові зліценія (заявка показується тільки при натисканні на конкретне зліценіє)
+    const numOf = x => (x.numerZlecenia || "").trim();
+    const orderFor = no => { const n = numOf(no); return n ? st.orders.find(o => numOf(o) === n) : null; };
+    const sortedNo = sortByDate(newOrders, o => o.date);
     h += `<div class="hl-sec"><div class="hl-sec-title"><span>Нові зліценія</span><span>${newOrders.length}</span></div>`;
     if (!newOrders.length) h += `<div class="hl-empty">Немає.</div>`;
-    newOrders.forEach(o => {
-      h += `<div class="hl-item no">
-        ${kv("Numer zlecenia", o.numerZlecenia)}
+    sortedNo.forEach(o => {
+      const ord = orderFor(o);
+      const open = expanded.has(String(o.id));
+      const code = o.labelCode && o.labelCode.trim();
+      h += `<div class="hl-card ${isPast(o.date) ? 'past' : ''}" data-id="${esc(o.id)}">
+        <div class="hl-card-head"><span class="hl-num">${esc(o.numerZlecenia || "без номера")}</span>
+          ${isPast(o.date) ? '<span class="hl-chip r hl-overdue">ПРОСТРОЧЕНО</span>' : ''}
+          <button class="hl-x" data-act="del" data-kind="no" data-id="${esc(o.id)}" type="button" title="Видалити">✕</button></div>
         ${kv("Дата початку", o.date)}
         ${kv("Ilość na zleceniu", o.ilosc)}
-        ${kv("Код етикетки", o.labelCode)}
-        <span class="hl-chip ${o.brought ? 'g' : ''}">${o.brought ? "Етикетку принесено" : "Етикетку не принесено"}</span>
-        ${delBtn("no", o.id)}
-      </div>`;
+        <div class="hl-kv"><span>Код етикетки</span>${code ? `<span class="hl-label">${esc(code)}</span>` : `<span>невідомий</span>`}</div>
+        <div class="hl-brought"><span>Етикетку принесено</span>
+          <div class="oc-brought-switch ${ord && ord.labelBrought ? 'on' : ''} ${ord ? '' : 'dis'}" data-act="brought" data-oid="${ord ? esc(ord.id) : ''}"></div></div>`;
+      if (!open) {
+        h += `<div class="hl-hint">Натисніть, щоб побачити заявку</div>`;
+      } else if (ord) {
+        h += `<div class="hl-detail">
+          ${kv("Дата початку", ord.dateEff || ord.date)}
+          ${kv("Numer katalogowy", ord.nrKatalogowy)}
+          ${kv("Nazwa", ord.nazwaProduktu)}
+          ${kv("Uwagi do zlecenia", ord.uwagiZlecenia)}
+          ${kv("Ilość", ord.iloscNaZleceniu)}
+          <span class="hl-chip ${ord.matched ? 'g' : 'r'}">${ord.matched ? "Етикетка знайдена" : "Очікує етикетку"}</span>
+          ${delBtn("ord", ord.id)}
+        </div>`;
+      } else {
+        h += `<div class="hl-detail"><div class="hl-empty">Заявку з таким номером ще не додано.</div></div>`;
+      }
+      h += `</div>`;
     });
     h += `</div>`;
 
-    // Заявки
-    h += `<div class="hl-sec"><div class="hl-sec-title"><span>Заявки</span><span>${orders.length}</span></div>`;
-    if (!orders.length) h += `<div class="hl-empty">Немає.</div>`;
-    orders.forEach(o => {
-      h += `<div class="hl-item ${o.matched ? 'ok' : ''}">
-        ${kv("Numer zlecenia", o.numerZlecenia)}
-        ${kv("Дата початку", o.dateEff || o.date)}
-        ${kv("Numer katalogowy", o.nrKatalogowy)}
-        ${kv("Nazwa", o.nazwaProduktu)}
-        ${kv("Код етикетки", o.labelCode)}
-        ${kv("Uwagi do zlecenia", o.uwagiZlecenia)}
-        ${kv("Ilość", o.iloscNaZleceniu)}
-        <span class="hl-chip ${o.matched ? 'g' : 'r'}">${o.matched ? "Етикетка знайдена" : "Очікує етикетку"}</span>
-        <span class="hl-chip ${o.labelBrought ? 'g' : ''}">${o.labelBrought ? "Принесено" : "Не принесено"}</span>
-        ${delBtn("ord", o.id)}
-      </div>`;
-    });
-    h += `</div>`;
+    // Заявки цієї машини, які не прив'язані до її зліценій
+    const myNums = new Set(newOrders.map(numOf).filter(Boolean));
+    const loose = sortByDate(orders.filter(o => !myNums.has(numOf(o))), o => o.dateEff || o.date);
+    if (loose.length) {
+      h += `<div class="hl-sec"><div class="hl-sec-title"><span>Заявки без зліценія</span><span>${loose.length}</span></div>`;
+      loose.forEach(o => {
+        h += `<div class="hl-item ${o.matched ? 'ok' : ''}">
+          ${kv("Numer zlecenia", o.numerZlecenia)}
+          ${kv("Дата початку", o.dateEff || o.date)}
+          ${kv("Numer katalogowy", o.nrKatalogowy)}
+          ${kv("Nazwa", o.nazwaProduktu)}
+          ${kv("Код етикетки", o.labelCode)}
+          ${kv("Uwagi do zlecenia", o.uwagiZlecenia)}
+          ${kv("Ilość", o.iloscNaZleceniu)}
+          <span class="hl-chip ${o.matched ? 'g' : 'r'}">${o.matched ? "Етикетка знайдена" : "Очікує етикетку"}</span>
+          <span class="hl-chip ${o.labelBrought ? 'g' : ''}">${o.labelBrought ? "Принесено" : "Не принесено"}</span>
+          ${delBtn("ord", o.id)}
+        </div>`;
+      });
+      h += `</div>`;
+    }
 
     // Етикетки
     h += `<div class="hl-sec"><div class="hl-sec-title"><span>Етикетки</span><span>${labels.length}</span></div>`;
@@ -2672,16 +2758,30 @@ document.querySelectorAll(".tab").forEach(t => {
   });
   overlay.addEventListener("click", async (e) => {
     if (e.target === overlay || e.target.closest("[data-act=close]")) { closeInfo(); return; }
+    const sw = e.target.closest("[data-act=brought]");
+    if (sw) {
+      if (!sw.dataset.oid) return;
+      sw.classList.toggle("on");
+      await window.__trToggleBrought(sw.dataset.oid);
+      lastHtml = ""; renderInfo();
+      return;
+    }
     const b = e.target.closest("[data-act=del]");
-    if (!b) return;
-    const names = { zl: "картку злиття", no: "зліценіє", ord: "заявку", lb: "етикетку" };
-    if (!confirm("Видалити " + names[b.dataset.kind] + "? Запис зникне і у відповідній вкладці.")) return;
-    const id = b.dataset.id;
-    if (b.dataset.kind === "zl") await window.__zlDelete(id);
-    else await window.__trDelete(id);
-    lastHtml = "";
-    renderInfo();
-    updateLive();
+    if (b) {
+      const names = { zl: "картку злиття", no: "зліценіє", ord: "заявку", lb: "етикетку" };
+      if (!confirm("Видалити " + names[b.dataset.kind] + "? Запис зникне і у відповідній вкладці.")) return;
+      const id = b.dataset.id;
+      if (b.dataset.kind === "zl") await window.__zlDelete(id);
+      else await window.__trDelete(id);
+      lastHtml = ""; renderInfo(); updateLive();
+      return;
+    }
+    const card = e.target.closest(".hl-card");
+    if (card && !e.target.closest(".hl-detail")) {
+      const id = card.dataset.id;
+      if (expanded.has(id)) expanded.delete(id); else expanded.add(id);
+      lastHtml = ""; renderInfo();
+    }
   });
 
   setInterval(function () { updateLive(); if (openKey) renderInfo(); }, 1000);
