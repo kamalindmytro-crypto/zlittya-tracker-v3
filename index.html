@@ -379,6 +379,17 @@ footer{
 .mod-tracker .machine-chip button{ background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:13px; }
 .mod-tracker .machine-wrap{ display:flex; flex-wrap:wrap; }
 .mod-tracker .hint{ font-size:11.5px; color:var(--text-dim); margin-top:6px; line-height:1.5; }
+
+/* ---- Вибір моделі Gemini (Налаштування) ---- */
+.mod-tracker .model-box{ background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px; }
+.mod-tracker .model-current{ font-family:var(--mono); font-size:12.5px; color:var(--amber); margin-bottom:10px; word-break:break-all; }
+.mod-tracker .model-current span{ color:var(--text-dim); font-family:var(--sans); }
+.mod-tracker .model-actions{ display:flex; gap:8px; margin-top:8px; }
+.mod-tracker .model-actions .btn{ flex:1; padding:9px 8px; font-size:12.5px; }
+.mod-tracker .model-box input[type=text]{
+  width:100%; background:var(--surface-2); border:1px solid var(--border); color:var(--text);
+  padding:10px 11px; border-radius:8px; font-size:13px; font-family:var(--mono); margin-top:8px;
+}
  
 /* ---- NEW: фото-заявки (додано разом з інтеграцією інструмента розпізнавання) ---- */
 .mod-tracker .opt-row{ display:flex; align-items:center; gap:10px; margin-bottom:10px; }
@@ -624,9 +635,26 @@ footer{
       <div class="field">
         <label>API ключі Gemini (розпізнавання фото) · перемикання вручну</label>
         <div id="apiKeysWrap"></div>
-        <div class="status-line" id="apiKeysStatus">Оберіть точкою активний ключ. Модель: gemini-3.5-flash-lite.</div>
+        <div class="status-line" id="apiKeysStatus">Оберіть точкою активний ключ.</div>
         <div class="hint">Ключі зберігаються тільки на цьому пристрої і не потрапляють у спільну базу.</div>
       </div>
+
+      <!-- Вибір моделі Gemini -->
+      <div class="field">
+        <label>Модель Gemini (розпізнавання фото)</label>
+        <div class="model-box">
+          <div class="model-current"><span>Активна модель:</span> <b id="modelCurrent">—</b></div>
+          <select id="modelSelect"></select>
+          <input type="text" id="modelCustom" placeholder="або впишіть назву вручну, напр. gemini-2.5-flash" autocapitalize="off" autocorrect="off" spellcheck="false">
+          <div class="model-actions">
+            <button class="btn" id="btnRefreshModels" type="button">🔄 Оновити список</button>
+            <button class="btn" id="btnTestModel" type="button">✔️ Перевірити</button>
+          </div>
+          <div class="status-line" id="modelStatus"></div>
+          <div class="hint">«Оновити список» завантажує з Google актуальні моделі, доступні саме для вашого активного ключа. «Перевірити» робить тестовий запит до обраної моделі. Вибір зберігається тільки на цьому пристрої.</div>
+        </div>
+      </div>
+
       <div class="field">
         <label>Додати номер машини (для заявок/етикеток)</label>
         <div class="row2">
@@ -1257,7 +1285,30 @@ document.querySelectorAll(".tab").forEach(t => {
   const LS_ACTIVE_KEY = "flt_gemini_active_v1";
   const LS_BATCH_SIZE = "flt_photo_batch_size_v1";
   const LS_BATCH_MODE = "flt_photo_batch_mode_v1";
-  const GEMINI_MODEL = "gemini-3.5-flash-lite";
+  const LS_MODEL = "flt_gemini_model_v1";
+  const LS_MODEL_LIST = "flt_gemini_model_list_v1";
+
+  // Типова модель та стартовий список. Актуальний список можна завантажити з API кнопкою "Оновити список".
+  const DEFAULT_MODEL = "gemini-2.5-flash";
+  const PRESET_MODELS = [
+    "gemini-2.5-flash-lite",
+    "gemini-2.5-flash",
+    "gemini-2.5-pro",
+    "gemini-3-flash-preview",
+    "gemini-3-pro-preview"
+  ];
+  const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta";
+
+  function cleanModelName(s){ return String(s || "").trim().replace(/^models\//, ""); }
+  function loadModel(){ return cleanModelName(localStorage.getItem(LS_MODEL)) || DEFAULT_MODEL; }
+  function loadModelList(){
+    try{
+      const a = JSON.parse(localStorage.getItem(LS_MODEL_LIST) || "null");
+      if(Array.isArray(a) && a.length) return a.map(cleanModelName).filter(Boolean);
+    }catch(e){}
+    return PRESET_MODELS.slice();
+  }
+  function geminiUrl(){ return `${GEMINI_BASE}/models/${encodeURIComponent(state.model)}:generateContent`; }
  
   function loadApiKeys(){
     const raw = JSON.parse(localStorage.getItem(LS_APIKEYS) || "null") || [];
@@ -1283,7 +1334,9 @@ document.querySelectorAll(".tab").forEach(t => {
     activeKeyIndex: Number(localStorage.getItem(LS_ACTIVE_KEY) || "0"),
     machineListRowId: null,
     batchSize: loadBatchSize(),
-    batchMode: loadBatchMode()
+    batchMode: loadBatchMode(),
+    model: loadModel(),
+    modelList: loadModelList()
   };
  
   // Міст для вкладки Hale: віддає стан трекера (заявки, нові зліценія, етикетки) - тільки читання.
@@ -1409,6 +1462,113 @@ document.querySelectorAll(".tab").forEach(t => {
     const inp = e.target.closest("[data-action=edit-key]");
     if(inp){ state.apiKeys[Number(inp.dataset.i)] = inp.value; saveApiKeys(); }
   });
+
+  // ---------- SETTINGS: ВИБІР МОДЕЛІ GEMINI ----------
+  const modelSelect = document.getElementById("modelSelect");
+  const modelCustom = document.getElementById("modelCustom");
+  const modelCurrent = document.getElementById("modelCurrent");
+  const modelStatus = document.getElementById("modelStatus");
+  const btnRefreshModels = document.getElementById("btnRefreshModels");
+  const btnTestModel = document.getElementById("btnTestModel");
+
+  function setModelStatus(text, cls){
+    modelStatus.textContent = text || "";
+    modelStatus.className = "status-line" + (cls ? " " + cls : "");
+  }
+  function saveModel(){ localStorage.setItem(LS_MODEL, state.model); }
+  function saveModelList(){ localStorage.setItem(LS_MODEL_LIST, JSON.stringify(state.modelList)); }
+
+  function renderModelPicker(){
+    const list = state.modelList.slice();
+    if(state.model && !list.includes(state.model)) list.unshift(state.model);
+    modelSelect.innerHTML = list.map(m =>
+      `<option value="${escapeAttr(m)}" ${m === state.model ? "selected" : ""}>${escapeHtml(m)}</option>`
+    ).join("");
+    modelCurrent.textContent = state.model;
+    if(document.activeElement !== modelCustom) modelCustom.value = "";
+  }
+  function applyModel(name){
+    const n = cleanModelName(name);
+    if(!n) return;
+    state.model = n;
+    saveModel();
+    renderModelPicker();
+    setModelStatus("Модель змінено на " + n + ".", "ok");
+  }
+
+  modelSelect.addEventListener("change", () => applyModel(modelSelect.value));
+  modelCustom.addEventListener("change", () => {
+    const n = cleanModelName(modelCustom.value);
+    if(!n) return;
+    if(!state.modelList.includes(n)){ state.modelList.push(n); saveModelList(); }
+    applyModel(n);
+    modelCustom.value = "";
+  });
+
+  btnRefreshModels.addEventListener("click", async () => {
+    const apiKey = getActiveApiKey();
+    if(!apiKey){
+      setModelStatus(`Немає ключа для слоту ${state.activeKeyIndex+1}. Додайте його вище.`, "err");
+      return;
+    }
+    btnRefreshModels.disabled = true;
+    setModelStatus("Завантаження списку моделей…");
+    try{
+      let names = [];
+      let pageToken = "";
+      for(let i = 0; i < 5; i++){
+        const url = `${GEMINI_BASE}/models?pageSize=1000` + (pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : "");
+        const resp = await fetch(url, { headers: { "x-goog-api-key": apiKey } });
+        const data = await resp.json();
+        if(data.error) throw new Error(data.error.message || "Gemini API error");
+        (data.models || []).forEach(m => {
+          const methods = m.supportedGenerationMethods || [];
+          const name = cleanModelName(m.name);
+          if(methods.includes("generateContent") && /^gemini-/.test(name)) names.push(name);
+        });
+        if(!data.nextPageToken) break;
+        pageToken = data.nextPageToken;
+      }
+      names = Array.from(new Set(names));
+      // Прибираємо моделі, які не підходять для розпізнавання фото (tts, image-generation, embedding, live, thinking-only тощо).
+      const filtered = names.filter(n => !/(tts|image|embedding|live|audio|robotics|computer-use|native)/i.test(n));
+      if(filtered.length === 0) throw new Error("API не повернув жодної підходящої моделі.");
+      // Новіші версії - вище.
+      filtered.sort((a,b) => b.localeCompare(a, undefined, { numeric: true }));
+      state.modelList = filtered;
+      saveModelList();
+      renderModelPicker();
+      setModelStatus(`Знайдено моделей: ${filtered.length}. Оберіть зі списку.`, "ok");
+    }catch(err){
+      setModelStatus("Помилка: " + err.message, "err");
+    }
+    btnRefreshModels.disabled = false;
+  });
+
+  btnTestModel.addEventListener("click", async () => {
+    const apiKey = getActiveApiKey();
+    if(!apiKey){
+      setModelStatus(`Немає ключа для слоту ${state.activeKeyIndex+1}. Додайте його вище.`, "err");
+      return;
+    }
+    btnTestModel.disabled = true;
+    setModelStatus("Перевірка " + state.model + "…");
+    try{
+      const resp = await fetch(geminiUrl(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+        body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: "Reply with the single word: OK" }] }] })
+      });
+      const data = await resp.json();
+      if(data.error) throw new Error(data.error.message || "Gemini API error");
+      const parts = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) || [];
+      const txt = parts.map(p => p.text || "").join("").trim();
+      setModelStatus(`✓ Модель ${state.model} працює` + (txt ? ` (відповідь: ${txt.slice(0,30)})` : "") + ".", "ok");
+    }catch(err){
+      setModelStatus("✗ " + err.message, "err");
+    }
+    btnTestModel.disabled = false;
+  });
  
   function extractDigits(code){
     if(!code) return null;
@@ -1519,13 +1679,22 @@ document.querySelectorAll(".tab").forEach(t => {
     for(let i=0;i<arr.length;i+=size) out.push(arr.slice(i,i+size));
     return out;
   }
+
+  // Формує зрозуміле повідомлення про помилку Gemini (з підказкою, якщо модель не знайдена).
+  function geminiErrorMessage(err){
+    let msg = (err && err.message) || "Gemini API error";
+    if(/not found|not supported|404/i.test(msg)){
+      msg += ` — модель «${state.model}» недоступна. Виберіть іншу в Налаштуваннях (кнопка «Оновити список»).`;
+    }
+    return `Слот ${state.activeKeyIndex+1}: ${msg}`;
+  }
  
   async function ocrImage(file){
     const apiKey = getActiveApiKey();
     if(!apiKey) throw new Error(`Немає ключа для слоту ${state.activeKeyIndex+1}. Додайте його в Налаштуваннях або оберіть інший активний ключ.`);
     const base64 = await fileToBase64(file);
     const mediaType = file.type || "image/jpeg";
-    const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`, {
+    const resp = await fetch(geminiUrl(), {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
       body: JSON.stringify({
@@ -1540,8 +1709,7 @@ document.querySelectorAll(".tab").forEach(t => {
     });
     const data = await resp.json();
     if(data.error){
-      const msg = data.error.message || "Gemini API error";
-      throw new Error(`Слот ${state.activeKeyIndex+1}: ${msg}`);
+      throw new Error(geminiErrorMessage(data.error));
     }
     const parts = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) || [];
     return parts.map(p => p.text || "").join("\n");
@@ -1641,7 +1809,7 @@ document.querySelectorAll(".tab").forEach(t => {
   async function callGeminiStructured(base64, mime){
     const apiKey = getActiveApiKey();
     if(!apiKey) throw new Error(`Немає ключа для слоту ${state.activeKeyIndex+1}. Додайте його в Налаштуваннях або оберіть інший активний ключ.`);
-    const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`, {
+    const resp = await fetch(geminiUrl(), {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
       body: JSON.stringify({
@@ -1657,7 +1825,7 @@ document.querySelectorAll(".tab").forEach(t => {
     });
     const data = await resp.json();
     if(data.error){
-      throw new Error(`Слот ${state.activeKeyIndex+1}: ${data.error.message || 'Gemini API error'}`);
+      throw new Error(geminiErrorMessage(data.error));
     }
     const parts = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) || [];
     const text = parts.map(p => p.text || "").join("");
@@ -1783,7 +1951,7 @@ document.querySelectorAll(".tab").forEach(t => {
   }
   function escapeAttr(s){ return String(s||"").replace(/"/g,"&quot;"); }
  
-  function renderAll(){ recompute(); renderOrders(); renderNewOrders(); renderLabels(); renderMachines(); renderApiKeys(); }
+  function renderAll(){ recompute(); renderOrders(); renderNewOrders(); renderLabels(); renderMachines(); renderApiKeys(); renderModelPicker(); }
  
   const machinesListEl = document.getElementById("machinesList");
   function renderMachines(){
@@ -2457,6 +2625,7 @@ document.querySelectorAll(".tab").forEach(t => {
   });
  
   // ---------- INIT ----------
+  renderModelPicker();
   syncTrackerFromServer();
   setInterval(renderNewOrders, 30000);
   sb.channel('tracker-changes')
