@@ -568,9 +568,87 @@ footer{
 .mod-tracker .hl-chip{ display:inline-block; font-size:10.5px; font-weight:700; padding:2px 7px; border-radius:20px; margin:4px 4px 0 0; background:var(--surface-3); color:var(--text-muted); }
 .mod-tracker .hl-chip.g{ color:var(--green); background:rgba(56,201,138,.12); }
 .mod-tracker .hl-chip.r{ color:var(--red); background:rgba(227,91,61,.12); }
+
+/* ======================= ВХІД: КОРИСТУВАЧ / АДМІН ======================= */
+body:not(.authed) .app{ visibility:hidden; }
+#loginGate{
+  position:fixed; inset:0; z-index:1000; background:var(--bg);
+  display:flex; align-items:center; justify-content:center; padding:24px;
+}
+body.authed #loginGate{ display:none; }
+.lg-card{ width:100%; max-width:360px; text-align:center; }
+.lg-lamp{ width:14px; height:14px; border-radius:50%; background:var(--amber); box-shadow:0 0 12px 3px rgba(242,169,59,.55); margin:0 auto 16px; }
+.lg-card h1{ font-size:20px; letter-spacing:.08em; text-transform:uppercase; margin:0 0 6px; }
+.lg-card p{ color:var(--text-muted); font-size:13px; margin:0 0 24px; }
+.lg-btn{
+  display:block; width:100%; margin-bottom:12px; padding:16px 14px; border-radius:12px;
+  background:var(--surface-2); border:1px solid var(--border); color:var(--text);
+  font-size:16px; font-weight:700; cursor:pointer;
+}
+.lg-btn small{ display:block; font-size:11.5px; font-weight:400; color:var(--text-dim); margin-top:3px; }
+.lg-btn:active{ background:var(--surface-3); }
+.lg-btn.admin{ border-color:var(--amber-dim); }
+.lg-btn.primary{ background:var(--amber); color:#1a1400; border-color:var(--amber); }
+.lg-input{
+  width:100%; background:var(--surface-2); border:1px solid var(--border); color:var(--text);
+  padding:14px; border-radius:10px; font-size:18px; text-align:center; letter-spacing:.3em; margin-bottom:10px;
+}
+.lg-input:focus{ outline:none; border-color:var(--amber); }
+.lg-status{ min-height:18px; font-size:13px; color:var(--text-muted); margin-bottom:12px; }
+.lg-status.err{ color:var(--red); }
+#roleFooter{ margin-top:8px; }
+#roleFooter a{ color:var(--amber); text-decoration:none; }
+.mod-tracker .field input[type=password]{
+  width:100%; background:var(--surface-2); border:1px solid var(--border); color:var(--text);
+  padding:10px 11px; border-radius:8px; font-size:14px; margin-bottom:8px;
+}
+
+.mod-tracker .oc-no-row{ display:flex; align-items:flex-start; justify-content:space-between; gap:6px; }
+.mod-tracker .oc-copy{
+  flex:none; background:var(--surface-3); border:1px solid var(--border); color:var(--text-muted);
+  border-radius:6px; font-size:12px; line-height:1; padding:4px 6px; cursor:pointer; min-width:26px;
+}
+.mod-tracker .oc-copy:active{ background:var(--surface-2); }
+.mod-tracker .oc-copy.done{ color:var(--green); border-color:var(--green); }
+
+/* Режим "Користувач": тільки перегляд */
+body.role-user .tab[data-tab=settings],
+body.role-user #view-zlyttya .toolbar,
+body.role-user #view-neworders .toolbar,
+body.role-user #view-labels .toolbar,
+body.role-user #btnAddOrder,
+body.role-user #btnClearOrders,
+body.role-user [data-action=delete-label],
+body.role-user .detail-delete-row,
+body.role-user .hl-x,
+body.role-user .hl-xrow,
+body.role-user .hl-del,
+body.role-user #odSave,
+body.role-user #odDelete{ display:none !important; }
+body.role-user .oc-brought-switch{ pointer-events:none; }
+body.role-user #overlayOrderDetail input,
+body.role-user #overlayOrderDetail select{ pointer-events:none; }
 </style>
 </head>
 <body>
+<div id="loginGate">
+  <div class="lg-card">
+    <div class="lg-lamp"></div>
+    <h1>Виробництво</h1>
+    <div id="lgChoose">
+      <p>Оберіть режим входу</p>
+      <button class="lg-btn" id="lgUser" type="button">👤 Користувач<small>тільки перегляд, без змін</small></button>
+      <button class="lg-btn admin" id="lgAdmin" type="button">🔑 Адміністратор<small>повний доступ, потрібен пароль</small></button>
+    </div>
+    <div id="lgPass" style="display:none;">
+      <p>Введіть пароль адміністратора</p>
+      <input class="lg-input" type="password" id="lgPassInput" autocomplete="off" autocapitalize="off" placeholder="••••">
+      <div class="lg-status" id="lgStatus"></div>
+      <button class="lg-btn primary" id="lgLogin" type="button">Увійти</button>
+      <button class="lg-btn" id="lgBack" type="button">Назад</button>
+    </div>
+  </div>
+</div>
 <div class="app">
  
   <header class="top">
@@ -667,6 +745,21 @@ footer{
         <div class="machine-wrap settings-list" id="machinesList"></div>
       </div>
       <button class="btn btn-danger btn-block" id="btnResetMachines">Скинути список машин до типового</button>
+
+      <div class="field" style="margin-top:22px;">
+        <label>Пароль адміністратора</label>
+        <div class="model-box">
+          <input type="password" id="pwCur" placeholder="Поточний пароль" autocomplete="off">
+          <input type="password" id="pwNew" placeholder="Новий пароль (мін. 4 символи)" autocomplete="off">
+          <input type="password" id="pwNew2" placeholder="Повторіть новий пароль" autocomplete="off">
+          <div class="model-actions">
+            <button class="btn" id="btnChangePw" type="button">Змінити пароль</button>
+            <button class="btn btn-danger" id="btnLogout" type="button">Вийти</button>
+          </div>
+          <div class="status-line" id="pwStatus"></div>
+          <div class="hint">Пароль зберігається у спільній базі (у вигляді хешу), тому діє на всіх пристроях.</div>
+        </div>
+      </div>
     </section>
     <!-- ======================= HALE (схеми зал) ======================= -->
     <section id="view-hale" class="mod-hale active">
@@ -683,7 +776,7 @@ footer{
 
   </main>
  
-  <footer>Дані спільні для всіх, хто відкриває це посилання, і оновлюються автоматично в реальному часі.</footer>
+  <footer>Дані спільні для всіх, хто відкриває це посилання, і оновлюються автоматично в реальному часі.<div id="roleFooter"><span id="roleLabel"></span> · <a href="#" id="roleSwitch">Змінити режим</a></div></footer>
 </div>
  
 <!-- ======================= МОДАЛКИ: ЗЛИТТЯ ======================= -->
@@ -928,6 +1021,16 @@ if (window.supabase) {
 // Записи, зроблені до цього оновлення, не мають поля kind і трактуються як 'zlyttya'
 // (щоб старі дані з контролю злиття лишились на місці).
 const TABLE = 'machines';
+
+// Роль поточної сесії: 'admin' | 'user' | null (ще не обрано).
+(function () {
+  var role = null;
+  try { role = sessionStorage.getItem('prod_role'); } catch (e) {}
+  if (role !== 'admin' && role !== 'user') role = null;
+  window.__role = role;
+  window.__isAdmin = function () { return window.__role === 'admin'; };
+  if (role) document.body.classList.add('authed', 'role-' + role);
+})();
  
 /* ======================= ТАБИ ======================= */
 document.querySelectorAll(".tab").forEach(t => {
@@ -992,6 +1095,7 @@ document.querySelectorAll(".tab").forEach(t => {
  
   // Міст для вкладки Hale: видалення картки злиття (з підтвердженням у самій панелі Hale).
   window.__zlDelete = function (id) {
+    if (!window.__isAdmin()) return Promise.resolve(false);
     const backup = machines;
     machines = machines.filter(m => String(m.id) !== String(id));
     saveCachedMachines(machines);
@@ -1145,9 +1249,10 @@ document.querySelectorAll(".tab").forEach(t => {
     if (e.target === detailOverlay) { closeDetail(); return; }
     if (e.target.closest('[data-action="close-detail"]')) { closeDetail(); return; }
     const btn = e.target.closest('[data-action="delete"]');
-    if (btn) { pendingDeleteId = btn.dataset.id; renderDetail(); return; }
+    if (btn) { if (!window.__isAdmin()) return; pendingDeleteId = btn.dataset.id; renderDetail(); return; }
     const yesBtn = e.target.closest('[data-action="confirm-delete"]');
     if (yesBtn) {
+      if (!window.__isAdmin()) return;
       const id = yesBtn.dataset.id;
       const backup = machines;
       machines = machines.filter(m => String(m.id) !== String(id));
@@ -1170,6 +1275,7 @@ document.querySelectorAll(".tab").forEach(t => {
   const formError = document.getElementById('formError');
   const addBtn = document.getElementById('addBtn');
   addBtn.addEventListener('click', async function () {
+    if (!window.__isAdmin()) return;
     formError.textContent = '';
     const machine = document.getElementById('f-machine').value.trim();
     const total = parseInt(document.getElementById('f-total').value, 10);
@@ -1216,7 +1322,7 @@ document.querySelectorAll(".tab").forEach(t => {
   }
  
   const addOverlay = document.getElementById('addOverlay');
-  function openAddPanel() { addOverlay.classList.add('open'); document.getElementById('f-machine').focus(); }
+  function openAddPanel() { if (!window.__isAdmin()) return; addOverlay.classList.add('open'); document.getElementById('f-machine').focus(); }
   function closeAddPanel() { addOverlay.classList.remove('open'); }
  
   document.getElementById('openAddPanelBtn').addEventListener('click', openAddPanel);
@@ -1344,6 +1450,7 @@ document.querySelectorAll(".tab").forEach(t => {
   // Міст для вкладки Hale: видалення заявки / зліценія / етикетки за id.
   // Міст для вкладки Hale: перемикач "Етикетку принесено" на заявці.
   window.__trToggleBrought = async function (id) {
+    if (!window.__isAdmin()) return false;
     const o = state.orders.find(x => String(x.id) === String(id));
     if (!o) return false;
     const updated = await updateTrackerRow(o.id, 'order', {
@@ -1356,6 +1463,7 @@ document.querySelectorAll(".tab").forEach(t => {
     return !!updated;
   };
   window.__trDelete = async function (id) {
+    if (!window.__isAdmin()) return false;
     const ok = await deleteTrackerRow(id);
     if (!ok) alert('Не вдалося видалити на сервері.');
     await syncTrackerFromServer();
@@ -1426,7 +1534,7 @@ document.querySelectorAll(".tab").forEach(t => {
       state.machineListRowId = canonical.id;
       state.machines = Array.isArray(canonical.data.machines) ? canonical.data.machines : DEFAULT_MACHINES.slice();
     } else {
-      const created = await insertTrackerRow('tracker_machine_list', { machines: DEFAULT_MACHINES.slice() });
+      const created = window.__isAdmin() ? await insertTrackerRow('tracker_machine_list', { machines: DEFAULT_MACHINES.slice() }) : null;
       if (created){ state.machineListRowId = created.id; state.machines = created.data.machines; }
     }
  
@@ -1909,7 +2017,7 @@ document.querySelectorAll(".tab").forEach(t => {
         : `<div class="oc-label oc-label-missing">код етикетки невідомий</div>`;
       return `
         <div class="order-card new-zlecenie ${colorCls}" data-id="${no.id}" data-kind="neworder">
-          <div class="oc-no">${escapeHtml(no.numerZlecenia || 'без номера')}</div>
+          <div class="oc-no-row"><div class="oc-no">${escapeHtml(no.numerZlecenia || 'без номера')}</div>${no.numerZlecenia ? `<button class="oc-copy" type="button" data-action="copy-num" data-num="${escapeAttr(no.numerZlecenia)}" title="Скопіювати номер">📋</button>` : ''}</div>
           <div class="oc-main">${escapeHtml(no.machine || 'машина?')}</div>
           <div class="oc-date">${escapeHtml(no.date || 'дата?')}</div>
           ${no.ilosc ? `<div class="oc-ilosc">Ilość: ${escapeHtml(no.ilosc)}</div>` : ''}
@@ -2013,6 +2121,7 @@ document.querySelectorAll(".tab").forEach(t => {
   }
   document.getElementById("odCancel").addEventListener("click", () => overlayOrderDetail.classList.remove("open"));
   document.getElementById("odSave").addEventListener("click", async () => {
+    if(!window.__isAdmin()) return;
     const existing = state.orders.find(x => String(x.id) === String(editingOrderId));
     const payload = {
       date: document.getElementById("odDate").value.trim(),
@@ -2031,6 +2140,7 @@ document.querySelectorAll(".tab").forEach(t => {
     syncTrackerFromServer();
   });
   document.getElementById("odDelete").addEventListener("click", async () => {
+    if(!window.__isAdmin()) return;
     if(!confirm("Видалити цю заявку?")) return;
     overlayOrderDetail.classList.remove("open");
     const ok = await deleteTrackerRow(editingOrderId);
@@ -2042,6 +2152,7 @@ document.querySelectorAll(".tab").forEach(t => {
     const toggle = e.target.closest("[data-action=toggle-brought]");
     if(toggle){
       e.stopPropagation();
+      if(!window.__isAdmin()) return;
       const o = state.orders.find(x => String(x.id) === String(toggle.dataset.id));
       if(!o) return;
       const newVal = !o.labelBrought;
@@ -2059,9 +2170,38 @@ document.querySelectorAll(".tab").forEach(t => {
     if(card) openOrderDetail(card.dataset.id);
   });
  
+  function copyText(text){
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      return navigator.clipboard.writeText(text).then(() => true).catch(() => fallbackCopy(text));
+    }
+    return Promise.resolve(fallbackCopy(text));
+  }
+  function fallbackCopy(text){
+    try{
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed"; ta.style.opacity = "0"; ta.style.top = "0";
+      document.body.appendChild(ta);
+      ta.select(); ta.setSelectionRange(0, text.length);
+      const ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+      return ok;
+    }catch(e){ return false; }
+  }
+
   newOrdersList.addEventListener("click", async (e) => {
+    const cp = e.target.closest("[data-action=copy-num]");
+    if(cp){
+      e.stopPropagation();
+      const ok = await copyText(cp.dataset.num);
+      cp.textContent = ok ? "✓" : "✗";
+      cp.classList.toggle("done", ok);
+      setTimeout(() => { cp.textContent = "📋"; cp.classList.remove("done"); }, 1200);
+      return;
+    }
     const card = e.target.closest(".order-card[data-kind=neworder]");
-    if(!card) return;
+    if(!card || !window.__isAdmin()) return;
     if(confirm("Видалити це зліценіє?")){
       const ok = await deleteTrackerRow(card.dataset.id);
       if(!ok) alert('Не вдалося видалити зліценіє на сервері.');
@@ -2070,7 +2210,7 @@ document.querySelectorAll(".tab").forEach(t => {
   });
 
   document.getElementById("btnClearNewOrders").addEventListener("click", async () => {
-    if(state.newOrders.length===0) return;
+    if(!window.__isAdmin() || state.newOrders.length===0) return;
     if(!confirm("Очистити весь список нових зліценій?")) return;
     await Promise.all(state.newOrders.map(no => deleteTrackerRow(no.id)));
     syncTrackerFromServer();
@@ -2079,7 +2219,7 @@ document.querySelectorAll(".tab").forEach(t => {
   labelsList.addEventListener("click", async (e) => {
     const delBtn = e.target.closest("[data-action=delete-label]");
     if(delBtn){
-      if(confirm("Видалити цей код етикетки?")){
+      if(window.__isAdmin() && confirm("Видалити цей код етикетки?")){
         const ok = await deleteTrackerRow(delBtn.dataset.id);
         if(!ok) alert('Не вдалося видалити етикетку на сервері.');
         syncTrackerFromServer();
@@ -2157,13 +2297,13 @@ document.querySelectorAll(".tab").forEach(t => {
   });
 
   document.getElementById("btnClearOrders").addEventListener("click", async () => {
-    if(state.orders.length===0) return;
+    if(!window.__isAdmin() || state.orders.length===0) return;
     if(!confirm("Очистити весь список заявок?")) return;
     await Promise.all(state.orders.map(o => deleteTrackerRow(o.id)));
     syncTrackerFromServer();
   });
   document.getElementById("btnClearLabels").addEventListener("click", async () => {
-    if(state.labels.length===0) return;
+    if(!window.__isAdmin() || state.labels.length===0) return;
     if(!confirm("Очистити весь список етикеток?")) return;
     await Promise.all(state.labels.map(l => deleteTrackerRow(l.id)));
     syncTrackerFromServer();
@@ -2211,6 +2351,7 @@ document.querySelectorAll(".tab").forEach(t => {
   }
  
   document.getElementById("btnAddOrder").addEventListener("click", () => {
+    if(!window.__isAdmin()) return;
     resetAddOrderModal();
     overlayAddOrder.classList.add("open");
   });
@@ -2390,6 +2531,7 @@ document.querySelectorAll(".tab").forEach(t => {
   }
 
   document.getElementById("btnAddNewOrder").addEventListener("click", () => {
+    if(!window.__isAdmin()) return;
     resetAddNewOrderModal();
     overlayAddNewOrder.classList.add("open");
   });
@@ -2542,6 +2684,7 @@ document.querySelectorAll(".tab").forEach(t => {
   }
  
   document.getElementById("btnAddLabels").addEventListener("click", () => {
+    if(!window.__isAdmin()) return;
     resetAddLabelsModal();
     overlayAddLabels.classList.add("open");
   });
@@ -2631,6 +2774,138 @@ document.querySelectorAll(".tab").forEach(t => {
   sb.channel('tracker-changes')
     .on('postgres_changes', { event: '*', schema: 'public', table: TABLE }, function () { syncTrackerFromServer(); })
     .subscribe();
+})();
+</script>
+
+<script>
+/* ======================= ВХІД ТА ПАРОЛЬ АДМІНІСТРАТОРА ======================= */
+(function () {
+  "use strict";
+  var DEFAULT_PASS = "0000";
+  var CACHE_KEY = "prod_admin_hash_cache_v1";
+  var $ = function (id) { return document.getElementById(id); };
+
+  async function sha256(str) {
+    try {
+      if (window.crypto && crypto.subtle) {
+        var buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("prod-tracker:" + str));
+        return Array.from(new Uint8Array(buf)).map(function (b) { return b.toString(16).padStart(2, "0"); }).join("");
+      }
+    } catch (e) {}
+    return "plain:" + str;
+  }
+
+  // Рядок з паролем у спільній базі: data.kind === 'admin_config'.
+  async function getAdminRow() {
+    if (!sb) return { row: null, error: true };
+    var res = await sb.from(TABLE).select("id, data").order("id", { ascending: true });
+    if (res.error) { console.error("admin_config load error", res.error); return { row: null, error: true }; }
+    var rows = res.data.filter(function (r) { return r.data && r.data.kind === "admin_config"; });
+    return { row: rows[0] || null, error: false };
+  }
+
+  async function checkPassword(pw) {
+    var res = await getAdminRow();
+    var h = await sha256(pw);
+    var expected;
+    if (res.error) {
+      expected = localStorage.getItem(CACHE_KEY) || await sha256(DEFAULT_PASS);
+    } else if (res.row && res.row.data.hash) {
+      expected = res.row.data.hash;
+      localStorage.setItem(CACHE_KEY, expected);
+    } else {
+      expected = await sha256(DEFAULT_PASS);
+      localStorage.removeItem(CACHE_KEY);
+    }
+    return h === expected;
+  }
+
+  function setRole(role) {
+    try { sessionStorage.setItem("prod_role", role); } catch (e) {}
+    window.__role = role;
+    document.body.classList.remove("role-admin", "role-user");
+    document.body.classList.add("authed", "role-" + role);
+    updateRoleLabel();
+  }
+  function logout() {
+    try { sessionStorage.removeItem("prod_role"); } catch (e) {}
+    location.reload();
+  }
+  function updateRoleLabel() {
+    var el = $("roleLabel");
+    if (el) el.textContent = window.__role === "admin" ? "Режим: Адміністратор" : (window.__role === "user" ? "Режим: Користувач (перегляд)" : "");
+  }
+
+  // ----- екран входу -----
+  var lgStatus = $("lgStatus");
+  function lgMsg(t, err) { lgStatus.textContent = t || ""; lgStatus.className = "lg-status" + (err ? " err" : ""); }
+
+  $("lgUser").addEventListener("click", function () { setRole("user"); });
+  $("lgAdmin").addEventListener("click", function () {
+    $("lgChoose").style.display = "none";
+    $("lgPass").style.display = "block";
+    $("lgPassInput").value = "";
+    lgMsg("");
+    setTimeout(function () { $("lgPassInput").focus(); }, 50);
+  });
+  $("lgBack").addEventListener("click", function () {
+    $("lgPass").style.display = "none";
+    $("lgChoose").style.display = "block";
+    lgMsg("");
+  });
+  async function doLogin() {
+    var pw = $("lgPassInput").value;
+    if (!pw) { lgMsg("Введіть пароль.", true); return; }
+    var btn = $("lgLogin");
+    btn.disabled = true;
+    lgMsg("Перевірка…");
+    var ok = false;
+    try { ok = await checkPassword(pw); } catch (e) { console.error(e); }
+    btn.disabled = false;
+    if (ok) { lgMsg(""); setRole("admin"); }
+    else { lgMsg("Невірний пароль.", true); $("lgPassInput").select(); }
+  }
+  $("lgLogin").addEventListener("click", doLogin);
+  $("lgPassInput").addEventListener("keydown", function (e) { if (e.key === "Enter") doLogin(); });
+
+  // ----- вихід / зміна режиму -----
+  $("roleSwitch").addEventListener("click", function (e) { e.preventDefault(); logout(); });
+  $("btnLogout").addEventListener("click", logout);
+  updateRoleLabel();
+
+  // ----- зміна пароля (Налаштування) -----
+  var pwStatus = $("pwStatus");
+  function pwMsg(t, cls) { pwStatus.textContent = t || ""; pwStatus.className = "status-line" + (cls ? " " + cls : ""); }
+
+  $("btnChangePw").addEventListener("click", async function () {
+    if (!window.__isAdmin()) return;
+    var cur = $("pwCur").value, n1 = $("pwNew").value, n2 = $("pwNew2").value;
+    if (!cur || !n1 || !n2) { pwMsg("Заповніть усі три поля.", "err"); return; }
+    if (n1.length < 4) { pwMsg("Новий пароль має бути не коротший за 4 символи.", "err"); return; }
+    if (n1 !== n2) { pwMsg("Новий пароль і повтор не збігаються.", "err"); return; }
+    var btn = $("btnChangePw");
+    btn.disabled = true;
+    pwMsg("Збереження…");
+    try {
+      if (!(await checkPassword(cur))) { pwMsg("Поточний пароль невірний.", "err"); btn.disabled = false; return; }
+      var res = await getAdminRow();
+      if (res.error) { pwMsg("Не вдалося зв'язатися з сервером. Перевірте інтернет.", "err"); btn.disabled = false; return; }
+      var hash = await sha256(n1);
+      var payload = { kind: "admin_config", hash: hash };
+      var q = res.row
+        ? sb.from(TABLE).update({ data: payload }).eq("id", res.row.id).select("id, data").single()
+        : sb.from(TABLE).insert({ data: payload }).select("id, data").single();
+      var out = await q;
+      if (out.error) { console.error(out.error); pwMsg("Не вдалося зберегти пароль на сервері.", "err"); btn.disabled = false; return; }
+      localStorage.setItem(CACHE_KEY, hash);
+      $("pwCur").value = ""; $("pwNew").value = ""; $("pwNew2").value = "";
+      pwMsg("Пароль змінено.", "ok");
+    } catch (e) {
+      console.error(e);
+      pwMsg("Помилка: " + e.message, "err");
+    }
+    btn.disabled = false;
+  });
 })();
 </script>
 
@@ -2937,7 +3212,7 @@ document.querySelectorAll(".tab").forEach(t => {
     if (e.target === overlay || e.target.closest("[data-act=close]")) { closeInfo(); return; }
     const sw = e.target.closest("[data-act=brought]");
     if (sw) {
-      if (!sw.dataset.oid) return;
+      if (!sw.dataset.oid || !window.__isAdmin()) return;
       sw.classList.toggle("on");
       await window.__trToggleBrought(sw.dataset.oid);
       lastHtml = ""; renderInfo();
@@ -2945,6 +3220,7 @@ document.querySelectorAll(".tab").forEach(t => {
     }
     const b = e.target.closest("[data-act=del]");
     if (b) {
+      if (!window.__isAdmin()) return;
       const names = { zl: "картку злиття", no: "зліценіє", ord: "заявку", lb: "етикетку" };
       if (!confirm("Видалити " + names[b.dataset.kind] + "? Запис зникне і у відповідній вкладці.")) return;
       const id = b.dataset.id;
