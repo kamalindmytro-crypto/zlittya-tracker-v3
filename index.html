@@ -625,6 +625,12 @@ body.role-user .hl-xrow,
 body.role-user .hl-del,
 body.role-user #odSave,
 body.role-user #odDelete{ display:none !important; }
+body.role-calc .tab:not([data-tab=zlyttya]),
+body.role-calc #view-hale,
+body.role-calc #view-neworders,
+body.role-calc #view-orders,
+body.role-calc #view-labels,
+body.role-calc #view-settings{ display:none !important; }
 body.role-user .oc-brought-switch{ pointer-events:none; }
 body.role-user #overlayOrderDetail input,
 body.role-user #overlayOrderDetail select{ pointer-events:none; }
@@ -638,6 +644,7 @@ body.role-user #overlayOrderDetail select{ pointer-events:none; }
     <div id="lgChoose">
       <p>Оберіть режим входу</p>
       <button class="lg-btn" id="lgUser" type="button">👤 Користувач<small>тільки перегляд, без змін</small></button>
+      <button class="lg-btn" id="lgCalc" type="button">⏱️ Калькулятор кінця зліценія<small>тільки вкладка «Таймер», з можливістю роботи</small></button>
       <button class="lg-btn admin" id="lgAdmin" type="button">🔑 Адміністратор<small>повний доступ, потрібен пароль</small></button>
     </div>
     <div id="lgPass" style="display:none;">
@@ -659,7 +666,7 @@ body.role-user #overlayOrderDetail select{ pointer-events:none; }
     </div>
     <div class="tabs">
       <button class="tab active" data-tab="hale">Hale</button>
-      <button class="tab" data-tab="zlyttya">Злиття</button>
+      <button class="tab" data-tab="zlyttya">Таймер ⏱️</button>
       <button class="tab" data-tab="neworders">Нові зліценія</button>
       <button class="tab" data-tab="orders">Заявки</button>
       <button class="tab" data-tab="labels">Етикетки</button>
@@ -1026,9 +1033,11 @@ const TABLE = 'machines';
 (function () {
   var role = null;
   try { role = sessionStorage.getItem('prod_role'); } catch (e) {}
-  if (role !== 'admin' && role !== 'user') role = null;
+  if (role !== 'admin' && role !== 'user' && role !== 'calc') role = null;
   window.__role = role;
   window.__isAdmin = function () { return window.__role === 'admin'; };
+  // Право працювати з вкладкою "Таймер" (додавати/видаляти картки): адмін і режим калькулятора.
+  window.__canTimer = function () { return window.__role === 'admin' || window.__role === 'calc'; };
   if (role) document.body.classList.add('authed', 'role-' + role);
 })();
  
@@ -1095,7 +1104,7 @@ document.querySelectorAll(".tab").forEach(t => {
  
   // Міст для вкладки Hale: видалення картки злиття (з підтвердженням у самій панелі Hale).
   window.__zlDelete = function (id) {
-    if (!window.__isAdmin()) return Promise.resolve(false);
+    if (!window.__canTimer()) return Promise.resolve(false);
     const backup = machines;
     machines = machines.filter(m => String(m.id) !== String(id));
     saveCachedMachines(machines);
@@ -1249,10 +1258,10 @@ document.querySelectorAll(".tab").forEach(t => {
     if (e.target === detailOverlay) { closeDetail(); return; }
     if (e.target.closest('[data-action="close-detail"]')) { closeDetail(); return; }
     const btn = e.target.closest('[data-action="delete"]');
-    if (btn) { if (!window.__isAdmin()) return; pendingDeleteId = btn.dataset.id; renderDetail(); return; }
+    if (btn) { if (!window.__canTimer()) return; pendingDeleteId = btn.dataset.id; renderDetail(); return; }
     const yesBtn = e.target.closest('[data-action="confirm-delete"]');
     if (yesBtn) {
-      if (!window.__isAdmin()) return;
+      if (!window.__canTimer()) return;
       const id = yesBtn.dataset.id;
       const backup = machines;
       machines = machines.filter(m => String(m.id) !== String(id));
@@ -1275,7 +1284,7 @@ document.querySelectorAll(".tab").forEach(t => {
   const formError = document.getElementById('formError');
   const addBtn = document.getElementById('addBtn');
   addBtn.addEventListener('click', async function () {
-    if (!window.__isAdmin()) return;
+    if (!window.__canTimer()) return;
     formError.textContent = '';
     const machine = document.getElementById('f-machine').value.trim();
     const total = parseInt(document.getElementById('f-total').value, 10);
@@ -1322,7 +1331,7 @@ document.querySelectorAll(".tab").forEach(t => {
   }
  
   const addOverlay = document.getElementById('addOverlay');
-  function openAddPanel() { if (!window.__isAdmin()) return; addOverlay.classList.add('open'); document.getElementById('f-machine').focus(); }
+  function openAddPanel() { if (!window.__canTimer()) return; addOverlay.classList.add('open'); document.getElementById('f-machine').focus(); }
   function closeAddPanel() { addOverlay.classList.remove('open'); }
  
   document.getElementById('openAddPanelBtn').addEventListener('click', openAddPanel);
@@ -2784,6 +2793,7 @@ document.querySelectorAll(".tab").forEach(t => {
   var DEFAULT_PASS = "0000";
   var CACHE_KEY = "prod_admin_hash_cache_v1";
   var $ = function (id) { return document.getElementById(id); };
+  function openTimerTab() { var t = document.querySelector('.tab[data-tab="zlyttya"]'); if (t) t.click(); }
 
   async function sha256(str) {
     try {
@@ -2823,9 +2833,10 @@ document.querySelectorAll(".tab").forEach(t => {
   function setRole(role) {
     try { sessionStorage.setItem("prod_role", role); } catch (e) {}
     window.__role = role;
-    document.body.classList.remove("role-admin", "role-user");
+    document.body.classList.remove("role-admin", "role-user", "role-calc");
     document.body.classList.add("authed", "role-" + role);
     updateRoleLabel();
+    if (role === "calc") openTimerTab();
   }
   function logout() {
     try { sessionStorage.removeItem("prod_role"); } catch (e) {}
@@ -2833,7 +2844,7 @@ document.querySelectorAll(".tab").forEach(t => {
   }
   function updateRoleLabel() {
     var el = $("roleLabel");
-    if (el) el.textContent = window.__role === "admin" ? "Режим: Адміністратор" : (window.__role === "user" ? "Режим: Користувач (перегляд)" : "");
+    if (el) el.textContent = window.__role === "admin" ? "Режим: Адміністратор" : (window.__role === "user" ? "Режим: Користувач (перегляд)" : (window.__role === "calc" ? "Режим: Калькулятор (Таймер)" : ""));
   }
 
   // ----- екран входу -----
@@ -2841,6 +2852,7 @@ document.querySelectorAll(".tab").forEach(t => {
   function lgMsg(t, err) { lgStatus.textContent = t || ""; lgStatus.className = "lg-status" + (err ? " err" : ""); }
 
   $("lgUser").addEventListener("click", function () { setRole("user"); });
+  $("lgCalc").addEventListener("click", function () { setRole("calc"); });
   $("lgAdmin").addEventListener("click", function () {
     $("lgChoose").style.display = "none";
     $("lgPass").style.display = "block";
@@ -2872,6 +2884,7 @@ document.querySelectorAll(".tab").forEach(t => {
   $("roleSwitch").addEventListener("click", function (e) { e.preventDefault(); logout(); });
   $("btnLogout").addEventListener("click", logout);
   updateRoleLabel();
+  if (window.__role === "calc") openTimerTab();
 
   // ----- зміна пароля (Налаштування) -----
   var pwStatus = $("pwStatus");
