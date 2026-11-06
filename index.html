@@ -643,12 +643,12 @@ body.role-user #overlayOrderDetail select{ pointer-events:none; }
     <h1>Виробництво</h1>
     <div id="lgChoose">
       <p>Оберіть режим входу</p>
-      <button class="lg-btn" id="lgUser" type="button">👤 Користувач<small>тільки перегляд, без змін</small></button>
+      <button class="lg-btn" id="lgUser" type="button">👤 Користувач<small>тільки перегляд, потрібен пароль</small></button>
       <button class="lg-btn" id="lgCalc" type="button">⏱️ Калькулятор кінця зліценія<small>тільки вкладка «Таймер», з можливістю роботи</small></button>
       <button class="lg-btn admin" id="lgAdmin" type="button">🔑 Адміністратор<small>повний доступ, потрібен пароль</small></button>
     </div>
     <div id="lgPass" style="display:none;">
-      <p>Введіть пароль адміністратора</p>
+      <p id="lgPassTitle">Введіть пароль</p>
       <input class="lg-input" type="password" id="lgPassInput" autocomplete="off" autocapitalize="off" placeholder="••••">
       <div class="lg-status" id="lgStatus"></div>
       <button class="lg-btn primary" id="lgLogin" type="button">Увійти</button>
@@ -752,6 +752,19 @@ body.role-user #overlayOrderDetail select{ pointer-events:none; }
         <div class="machine-wrap settings-list" id="machinesList"></div>
       </div>
       <button class="btn btn-danger btn-block" id="btnResetMachines">Скинути список машин до типового</button>
+
+      <div class="field" style="margin-top:22px;">
+        <label>Пароль користувача (режим перегляду)</label>
+        <div class="model-box">
+          <input type="password" id="upNew" placeholder="Новий пароль користувача (мін. 4 символи)" autocomplete="off">
+          <input type="password" id="upNew2" placeholder="Повторіть пароль" autocomplete="off">
+          <div class="model-actions">
+            <button class="btn" id="btnChangeUserPw" type="button">Змінити пароль користувача</button>
+          </div>
+          <div class="status-line" id="upStatus"></div>
+          <div class="hint">Типовий пароль користувача, поки ви його не змінили: 1111.</div>
+        </div>
+      </div>
 
       <div class="field" style="margin-top:22px;">
         <label>Пароль адміністратора</label>
@@ -1034,6 +1047,14 @@ const TABLE = 'machines';
   var role = null;
   try { role = sessionStorage.getItem('prod_role'); } catch (e) {}
   if (role !== 'admin' && role !== 'user' && role !== 'calc') role = null;
+  // Пряме посилання: ?mode=calc відкриває калькулятор (Таймер) без екрана входу.
+  try {
+    var qm = new URLSearchParams(location.search).get('mode');
+    if (qm === 'calc') {
+      role = qm;
+      sessionStorage.setItem('prod_role', role);
+    }
+  } catch (e) {}
   window.__role = role;
   window.__isAdmin = function () { return window.__role === 'admin'; };
   // Право працювати з вкладкою "Таймер" (додавати/видаляти картки): адмін і режим калькулятора.
@@ -2787,11 +2808,11 @@ document.querySelectorAll(".tab").forEach(t => {
 </script>
 
 <script>
-/* ======================= ВХІД ТА ПАРОЛЬ АДМІНІСТРАТОРА ======================= */
+/* ======================= ВХІД ТА ПАРОЛІ (адмін / користувач) ======================= */
 (function () {
   "use strict";
-  var DEFAULT_PASS = "0000";
-  var CACHE_KEY = "prod_admin_hash_cache_v1";
+  var DEFAULTS = { admin_config: "0000", user_config: "1111" };
+  var CACHE = { admin_config: "prod_admin_hash_cache_v1", user_config: "prod_user_hash_cache_v1" };
   var $ = function (id) { return document.getElementById(id); };
   function openTimerTab() { var t = document.querySelector('.tab[data-tab="zlyttya"]'); if (t) t.click(); }
 
@@ -2805,29 +2826,43 @@ document.querySelectorAll(".tab").forEach(t => {
     return "plain:" + str;
   }
 
-  // Рядок з паролем у спільній базі: data.kind === 'admin_config'.
-  async function getAdminRow() {
+  // Рядок з паролем у спільній базі: data.kind === 'admin_config' або 'user_config'.
+  async function getRow(kind) {
     if (!sb) return { row: null, error: true };
     var res = await sb.from(TABLE).select("id, data").order("id", { ascending: true });
-    if (res.error) { console.error("admin_config load error", res.error); return { row: null, error: true }; }
-    var rows = res.data.filter(function (r) { return r.data && r.data.kind === "admin_config"; });
+    if (res.error) { console.error("config load error", res.error); return { row: null, error: true }; }
+    var rows = res.data.filter(function (r) { return r.data && r.data.kind === kind; });
     return { row: rows[0] || null, error: false };
   }
 
-  async function checkPassword(pw) {
-    var res = await getAdminRow();
+  async function checkPassword(pw, kind) {
+    var res = await getRow(kind);
     var h = await sha256(pw);
     var expected;
     if (res.error) {
-      expected = localStorage.getItem(CACHE_KEY) || await sha256(DEFAULT_PASS);
+      expected = localStorage.getItem(CACHE[kind]) || await sha256(DEFAULTS[kind]);
     } else if (res.row && res.row.data.hash) {
       expected = res.row.data.hash;
-      localStorage.setItem(CACHE_KEY, expected);
+      localStorage.setItem(CACHE[kind], expected);
     } else {
-      expected = await sha256(DEFAULT_PASS);
-      localStorage.removeItem(CACHE_KEY);
+      expected = await sha256(DEFAULTS[kind]);
+      localStorage.removeItem(CACHE[kind]);
     }
     return h === expected;
+  }
+
+  // Зберігає новий пароль. Повертає текст помилки або null.
+  async function savePassword(kind, newPw) {
+    var res = await getRow(kind);
+    if (res.error) return "Не вдалося зв'язатися з сервером. Перевірте інтернет.";
+    var hash = await sha256(newPw);
+    var payload = { kind: kind, hash: hash };
+    var out = await (res.row
+      ? sb.from(TABLE).update({ data: payload }).eq("id", res.row.id).select("id, data").single()
+      : sb.from(TABLE).insert({ data: payload }).select("id, data").single());
+    if (out.error) { console.error(out.error); return "Не вдалося зберегти пароль на сервері."; }
+    localStorage.setItem(CACHE[kind], hash);
+    return null;
   }
 
   function setRole(role) {
@@ -2840,7 +2875,8 @@ document.querySelectorAll(".tab").forEach(t => {
   }
   function logout() {
     try { sessionStorage.removeItem("prod_role"); } catch (e) {}
-    location.reload();
+    // Прибираємо ?mode=... з адреси, щоб знову з'явився екран входу.
+    location.href = location.pathname;
   }
   function updateRoleLabel() {
     var el = $("roleLabel");
@@ -2848,33 +2884,39 @@ document.querySelectorAll(".tab").forEach(t => {
   }
 
   // ----- екран входу -----
+  var pendingRole = null;
   var lgStatus = $("lgStatus");
   function lgMsg(t, err) { lgStatus.textContent = t || ""; lgStatus.className = "lg-status" + (err ? " err" : ""); }
 
-  $("lgUser").addEventListener("click", function () { setRole("user"); });
-  $("lgCalc").addEventListener("click", function () { setRole("calc"); });
-  $("lgAdmin").addEventListener("click", function () {
+  function askPassword(role) {
+    pendingRole = role;
     $("lgChoose").style.display = "none";
     $("lgPass").style.display = "block";
+    $("lgPassTitle").textContent = role === "admin" ? "Введіть пароль адміністратора" : "Введіть пароль користувача";
     $("lgPassInput").value = "";
     lgMsg("");
     setTimeout(function () { $("lgPassInput").focus(); }, 50);
-  });
+  }
+  $("lgUser").addEventListener("click", function () { askPassword("user"); });
+  $("lgAdmin").addEventListener("click", function () { askPassword("admin"); });
+  $("lgCalc").addEventListener("click", function () { setRole("calc"); });
   $("lgBack").addEventListener("click", function () {
+    pendingRole = null;
     $("lgPass").style.display = "none";
     $("lgChoose").style.display = "block";
     lgMsg("");
   });
   async function doLogin() {
+    if (!pendingRole) return;
     var pw = $("lgPassInput").value;
     if (!pw) { lgMsg("Введіть пароль.", true); return; }
     var btn = $("lgLogin");
     btn.disabled = true;
     lgMsg("Перевірка…");
     var ok = false;
-    try { ok = await checkPassword(pw); } catch (e) { console.error(e); }
+    try { ok = await checkPassword(pw, pendingRole === "admin" ? "admin_config" : "user_config"); } catch (e) { console.error(e); }
     btn.disabled = false;
-    if (ok) { lgMsg(""); setRole("admin"); }
+    if (ok) { lgMsg(""); setRole(pendingRole); }
     else { lgMsg("Невірний пароль.", true); $("lgPassInput").select(); }
   }
   $("lgLogin").addEventListener("click", doLogin);
@@ -2886,7 +2928,7 @@ document.querySelectorAll(".tab").forEach(t => {
   updateRoleLabel();
   if (window.__role === "calc") openTimerTab();
 
-  // ----- зміна пароля (Налаштування) -----
+  // ----- зміна пароля адміністратора (Налаштування) -----
   var pwStatus = $("pwStatus");
   function pwMsg(t, cls) { pwStatus.textContent = t || ""; pwStatus.className = "status-line" + (cls ? " " + cls : ""); }
 
@@ -2900,22 +2942,38 @@ document.querySelectorAll(".tab").forEach(t => {
     btn.disabled = true;
     pwMsg("Збереження…");
     try {
-      if (!(await checkPassword(cur))) { pwMsg("Поточний пароль невірний.", "err"); btn.disabled = false; return; }
-      var res = await getAdminRow();
-      if (res.error) { pwMsg("Не вдалося зв'язатися з сервером. Перевірте інтернет.", "err"); btn.disabled = false; return; }
-      var hash = await sha256(n1);
-      var payload = { kind: "admin_config", hash: hash };
-      var q = res.row
-        ? sb.from(TABLE).update({ data: payload }).eq("id", res.row.id).select("id, data").single()
-        : sb.from(TABLE).insert({ data: payload }).select("id, data").single();
-      var out = await q;
-      if (out.error) { console.error(out.error); pwMsg("Не вдалося зберегти пароль на сервері.", "err"); btn.disabled = false; return; }
-      localStorage.setItem(CACHE_KEY, hash);
+      if (!(await checkPassword(cur, "admin_config"))) { pwMsg("Поточний пароль невірний.", "err"); btn.disabled = false; return; }
+      var err = await savePassword("admin_config", n1);
+      if (err) { pwMsg(err, "err"); btn.disabled = false; return; }
       $("pwCur").value = ""; $("pwNew").value = ""; $("pwNew2").value = "";
       pwMsg("Пароль змінено.", "ok");
     } catch (e) {
       console.error(e);
       pwMsg("Помилка: " + e.message, "err");
+    }
+    btn.disabled = false;
+  });
+
+  // ----- зміна пароля користувача (тільки адмін) -----
+  var upStatus = $("upStatus");
+  function upMsg(t, cls) { upStatus.textContent = t || ""; upStatus.className = "status-line" + (cls ? " " + cls : ""); }
+
+  $("btnChangeUserPw").addEventListener("click", async function () {
+    if (!window.__isAdmin()) return;
+    var n1 = $("upNew").value, n2 = $("upNew2").value;
+    if (!n1 || !n2) { upMsg("Заповніть обидва поля.", "err"); return; }
+    if (n1.length < 4) { upMsg("Пароль має бути не коротший за 4 символи.", "err"); return; }
+    if (n1 !== n2) { upMsg("Паролі не збігаються.", "err"); return; }
+    var btn = $("btnChangeUserPw");
+    btn.disabled = true;
+    upMsg("Збереження…");
+    try {
+      var err = await savePassword("user_config", n1);
+      if (err) { upMsg(err, "err"); }
+      else { $("upNew").value = ""; $("upNew2").value = ""; upMsg("Пароль користувача змінено.", "ok"); }
+    } catch (e) {
+      console.error(e);
+      upMsg("Помилка: " + e.message, "err");
     }
     btn.disabled = false;
   });
