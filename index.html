@@ -1117,7 +1117,7 @@ document.querySelectorAll(".tab").forEach(t => {
  
   // Міст для вкладки Hale: віддає картки злиття з обрахунками (тільки читання).
   window.__zlGet = function () {
-    return machines.map(function (m) {
+    return machines.filter(function (m) { return !isExpired(m); }).map(function (m) {
       var c = computeMachine(m);
       return { m: m, c: c, st: stateFor(c.remainingSeconds, c.remainingPieces) };
     });
@@ -1162,6 +1162,46 @@ document.querySelectorAll(".tab").forEach(t => {
   }
   function fmtTimeOnly(date) { return `${pad(date.getHours())}:${pad(date.getMinutes())}`; }
  
+  // Завершені картки лишаються в кінці списку і зникають через 12 годин після завершення.
+  const FINISHED_TTL_MS = 12 * 60 * 60 * 1000;
+  const deletingIds = new Set();
+
+  function isExpired(m, calc) {
+    calc = calc || computeMachine(m);
+    return calc.remainingPieces <= 0 && (Date.now() - calc.finishDate.getTime()) > FINISHED_TTL_MS;
+  }
+
+  // Спочатку ті, де лишилось менше часу; завершені - в кінці (свіжіші вище).
+  function visibleSorted() {
+    const arr = [];
+    machines.forEach(function (m) {
+      const c = computeMachine(m);
+      if (isExpired(m, c)) return;
+      arr.push({ m: m, calc: c });
+    });
+    arr.sort(function (a, b) {
+      const af = a.calc.remainingPieces <= 0, bf = b.calc.remainingPieces <= 0;
+      if (af !== bf) return af ? 1 : -1;
+      if (af) return b.calc.finishDate - a.calc.finishDate;
+      return a.calc.remainingSeconds - b.calc.remainingSeconds;
+    });
+    return arr;
+  }
+
+  // Автоматичне видалення прострочених карток (виконують режими з правом працювати з Таймером).
+  function cleanupExpired() {
+    if (!window.__canTimer || !window.__canTimer()) return;
+    machines.filter(function (m) { return !deletingIds.has(String(m.id)) && isExpired(m); }).forEach(function (m) {
+      const id = String(m.id);
+      deletingIds.add(id);
+      machines = machines.filter(function (x) { return String(x.id) !== id; });
+      saveCachedMachines(machines);
+      deleteMachineOnServer(m.id).then(function (ok) {
+        if (!ok) setTimeout(function () { deletingIds.delete(id); }, 60000);
+      });
+    });
+  }
+
   function computeMachine(m) {
     const fullPallets = Math.max(m.palletNum - 1, 0);
     const doneAtEntry = (fullPallets * m.perPallet) + m.onCurrent;
@@ -1204,13 +1244,13 @@ document.querySelectorAll(".tab").forEach(t => {
   }
  
   function render() {
-    if (machines.length === 0) {
+    const list = visibleSorted();
+    if (list.length === 0) {
       emptyState.style.display = 'block';
       cardsWrap.innerHTML = '';
     } else {
       emptyState.style.display = 'none';
-      cardsWrap.innerHTML = machines.map((m) => {
-        const calc = computeMachine(m);
+      cardsWrap.innerHTML = list.map(({ m, calc }) => {
         const state = stateFor(calc.remainingSeconds, calc.remainingPieces);
         return `
           <div class="tile state-${state}" data-action="open-detail" data-id="${m.id}">
@@ -1395,7 +1435,7 @@ document.querySelectorAll(".tab").forEach(t => {
     document.getElementById('clock').textContent = fmtDateTime(new Date());
   }
  
-  setInterval(function () { tickClock(); render(); }, 1000);
+  setInterval(function () { tickClock(); cleanupExpired(); render(); }, 1000);
   tickClock();
   render();
  
