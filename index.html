@@ -1765,6 +1765,20 @@ document.querySelectorAll(".tab").forEach(t => {
     if(!m) return "9999-99-99";
     return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
   }
+  // Сортування за датою початку: найближчі (сьогодні й майбутні) - першими, минулі - в кінці
+  // (від найсвіжішої до найстарішої), без дати - в самому кінці.
+  function dateRank(str){
+    const m = String(str||'').trim().match(/^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})$/);
+    if(!m) return [2, 0];
+    const v = new Date(+m[3], +m[2]-1, +m[1]).getTime();
+    const t = new Date(); t.setHours(0,0,0,0);
+    return v >= t.getTime() ? [0, v] : [1, -v];
+  }
+  function cmpByDate(a, b){
+    const ra = dateRank(a), rb = dateRank(b);
+    return (ra[0] - rb[0]) || (ra[1] - rb[1]);
+  }
+
   function guessMachine(code){
     if(!code) return null;
     const up = code.toUpperCase();
@@ -2035,9 +2049,11 @@ document.querySelectorAll(".tab").forEach(t => {
     // Спочатку заявки, для яких вже знайдено співпадіння етикетки,
     // потім ті, що ще чекають; в межах групи - за датою початку.
     const arr = state.orders.slice().sort((a,b) => {
+      const d = cmpByDate(a.dateEff, b.dateEff);
+      if (d) return d;
       if (!!a.labelBrought !== !!b.labelBrought) return a.labelBrought ? 1 : -1;
       if (a.matched !== b.matched) return a.matched ? -1 : 1;
-      return sortableDate(a.dateEff).localeCompare(sortableDate(b.dateEff));
+      return 0;
     });
     if(arr.length === 0){
       ordersList.innerHTML = `<div class="empty">Немає заявок.<br>Натисніть «Додати фото заявок», щоб розпізнати їх з фото екрана.</div>`;
@@ -2068,11 +2084,13 @@ document.querySelectorAll(".tab").forEach(t => {
   const newOrdersList = document.getElementById("newOrdersList");
   function renderNewOrders(){
     const arr = state.newOrders.slice().sort((a,b) => {
+      const d = cmpByDate(a.date, b.date);
+      if (d) return d;
       if (!!a.brought !== !!b.brought) return a.brought ? 1 : -1;
       const aMissing = !extractDigits(a.labelCode);
       const bMissing = !extractDigits(b.labelCode);
       if (aMissing !== bMissing) return aMissing ? -1 : 1;
-      return sortableDate(a.date).localeCompare(sortableDate(b.date));
+      return 0;
     });
     if(arr.length === 0){
       newOrdersList.innerHTML = `<div class="empty">Немає нових зліценій.<br>Натисніть «Додати фото зліценій», щоб розпізнати їх з фото екрана.</div>`;
@@ -2303,9 +2321,11 @@ document.querySelectorAll(".tab").forEach(t => {
 
     // Той самий порядок, що й на екрані: знайдені (matched) заявки першими.
     const arr = state.orders.slice().sort((a,b) => {
+      const d = cmpByDate(a.dateEff, b.dateEff);
+      if (d) return d;
       if (!!a.labelBrought !== !!b.labelBrought) return a.labelBrought ? 1 : -1;
       if (a.matched !== b.matched) return a.matched ? -1 : 1;
-      return sortableDate(a.dateEff).localeCompare(sortableDate(b.dateEff));
+      return 0;
     });
 
     // Текст малюємо на canvas і вставляємо як зображення в PDF, бо вбудовані
