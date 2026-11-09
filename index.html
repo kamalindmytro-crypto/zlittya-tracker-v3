@@ -457,11 +457,13 @@ footer{
 .mod-tracker .order-card.new-zlecenie .oc-label.oc-label-missing{ color:var(--text-dim); font-weight:400; }
 .mod-tracker .order-card.new-zlecenie .brought-wrap{ display:flex; align-items:center; gap:5px; margin-top:6px; }
 .mod-tracker .order-card.new-zlecenie .brought-wrap span{ font-size:10px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.03em; }
-/* Картки без коду етикетки - підсвічені зеленим, щоб було видно, що очікують етикетку */
-.mod-tracker .order-card.new-zlecenie.missing-label{ border-left-color:var(--green); }
-.mod-tracker .order-card.new-zlecenie.missing-label .oc-no{ color:var(--green); }
-.mod-tracker .order-card.new-zlecenie.missing-label .oc-main{ color:var(--green); }
-.mod-tracker .order-card.new-zlecenie.missing-label .oc-date{ color:var(--green); }
+/* Картки без коду етикетки - червоний шрифт (і вони першими в списку) */
+.mod-tracker .order-card.new-zlecenie.missing-label{ border-left-color:var(--red); }
+.mod-tracker .order-card.new-zlecenie.missing-label .oc-no{ color:var(--red); }
+.mod-tracker .order-card.new-zlecenie.missing-label .oc-main{ color:var(--red); }
+.mod-tracker .order-card.new-zlecenie.missing-label .oc-date{ color:var(--red); }
+.mod-tracker .order-card.new-zlecenie.missing-label .oc-label.oc-label-missing{ color:var(--red); font-weight:700; }
+.mod-tracker .order-card.new-zlecenie.missing-label .oc-ilosc{ color:var(--red) !important; }
 /* Щойно додані картки (перші 10 хв) - підсвічені червоним, щоб було видно свіжі надходження */
 .mod-tracker .order-card.new-zlecenie.fresh-card{ border-left-color:var(--red); }
 .mod-tracker .order-card.new-zlecenie.fresh-card .oc-no{ color:var(--red); }
@@ -2179,6 +2181,10 @@ document.querySelectorAll(".tab").forEach(t => {
   const newOrdersList = document.getElementById("newOrdersList");
   function renderNewOrders(){
     const arr = state.newOrders.slice().sort((a,b) => {
+      // Зліценія з невідомим кодом етикетки - на самому початку (крім прострочених сірих - ті в кінці).
+      const am = !extractDigits(a.labelCode) && !isOverdueGray(a.date);
+      const bm = !extractDigits(b.labelCode) && !isOverdueGray(b.date);
+      if (am !== bm) return am ? -1 : 1;
       const d = cmpByDate(a.date, b.date);
       if (d) return d;
       if (!!a.brought !== !!b.brought) return a.brought ? 1 : -1;
@@ -2194,7 +2200,7 @@ document.querySelectorAll(".tab").forEach(t => {
     newOrdersList.innerHTML = arr.map(no => {
       const hasLabel = extractDigits(no.labelCode);
       const isFresh = no.createdAt && (Date.now() - no.createdAt) < (10 * 60 * 1000);
-      const colorCls = (isFresh ? 'fresh-card' : (hasLabel ? '' : 'missing-label')) + (isOverdueGray(no.date) ? ' overdue' : '');
+      const colorCls = (isFresh ? 'fresh-card' : '') + (hasLabel ? '' : ' missing-label') + (isOverdueGray(no.date) ? ' overdue' : '');
       const labelLine = hasLabel
         ? `<div class="oc-label">${escapeHtml(no.labelCode.trim())}</div>`
         : `<div class="oc-label oc-label-missing">код етикетки невідомий</div>`;
