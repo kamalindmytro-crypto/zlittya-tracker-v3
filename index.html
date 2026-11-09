@@ -611,6 +611,29 @@ body.authed #loginGate{ display:none; }
 .mod-tracker .oc-copy:active{ background:var(--surface-2); }
 .mod-tracker .oc-copy.done{ color:var(--green); border-color:var(--green); }
 
+/* Прострочені картки (заявки / нові зліценія): сірі + позначка */
+.mod-tracker .order-card .oc-overdue{ display:none; }
+.mod-tracker .order-card.overdue{ border-left-color:#6b7178 !important; box-shadow:none !important; filter:grayscale(1); opacity:.8; }
+.mod-tracker .order-card.overdue .oc-no,
+.mod-tracker .order-card.overdue .oc-main,
+.mod-tracker .order-card.overdue .oc-date,
+.mod-tracker .order-card.overdue .oc-label,
+.mod-tracker .order-card.overdue .oc-match,
+.mod-tracker .order-card.overdue .oc-waiting{ color:#8a9199 !important; }
+.mod-tracker .order-card.overdue .oc-overdue{
+  display:inline-block; margin-top:6px; font-size:10px; font-weight:700; letter-spacing:.04em;
+  color:#c9ced3; background:#3a4046; border-radius:20px; padding:2px 8px;
+}
+.mod-tracker .oc-ilosc-missing{ color:var(--text-dim) !important; }
+
+/* Пошук у вкладці "Заявки" */
+.mod-tracker .search-wrap{ margin-bottom:12px; }
+.mod-tracker .search-input{
+  width:100%; background:var(--surface-2); border:1px solid var(--border); color:var(--text);
+  padding:11px 12px; border-radius:8px; font-size:14px; -webkit-appearance:none; appearance:none;
+}
+.mod-tracker .search-input:focus{ outline:none; border-color:var(--amber); }
+
 /* Режим "Користувач": тільки перегляд */
 body.role-user .tab[data-tab=settings],
 body.role-user #view-zlyttya .toolbar,
@@ -702,6 +725,10 @@ body.role-user #overlayOrderDetail select{ pointer-events:none; }
         <button class="btn btn-primary" id="btnAddOrder">+ Додати фото заявок</button>
         <button class="btn" id="btnPrintOrders">🖨️ Друк</button>
         <button class="btn btn-danger" id="btnClearOrders">Очистити все</button>
+      </div>
+      <div class="search-wrap">
+        <input type="search" class="search-input" id="ordersSearch" placeholder="🔍 Пошук по заявках (будь-яке слово)" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+        <div class="hint" id="ordersSearchInfo"></div>
       </div>
       <div class="order-cards" id="ordersList"></div>
     </section>
@@ -1608,6 +1635,8 @@ document.querySelectorAll(".tab").forEach(t => {
       if (created){ state.machineListRowId = created.id; state.machines = created.data.machines; }
     }
  
+    recompute();
+    purgeExpired();
     renderAll();
   }
  
@@ -1777,6 +1806,69 @@ document.querySelectorAll(".tab").forEach(t => {
   function cmpByDate(a, b){
     const ra = dateRank(a), rb = dateRank(b);
     return (ra[0] - rb[0]) || (ra[1] - rb[1]);
+  }
+
+  // Скільки повних днів минуло від дати початку (дд.мм.рррр). null - дати немає. Сьогодні = 0.
+  const OVERDUE_GRAY_DAYS = 1;    // сірі та з позначкою, коли прострочено БІЛЬШЕ ніж на 1 день
+  const OVERDUE_DELETE_DAYS = 5;  // видаляються, коли прострочено на 5 днів
+  function daysPast(str){
+    const m = String(str||'').trim().match(/^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})$/);
+    if(!m) return null;
+    const v = new Date(+m[3], +m[2]-1, +m[1]).getTime();
+    const t = new Date(); t.setHours(0,0,0,0);
+    return Math.round((t.getTime() - v) / 86400000);
+  }
+  function isOverdueGray(str){ const d = daysPast(str); return d !== null && d > OVERDUE_GRAY_DAYS; }
+  function isOverdueDelete(str){ const d = daysPast(str); return d !== null && d >= OVERDUE_DELETE_DAYS; }
+
+  // Кількість: якщо це просто число - додаємо "шт".
+  function iloscHtml(v){
+    const t = String(v||'').trim();
+    if(!t) return `<div class="oc-ilosc oc-ilosc-missing">Кількість: —</div>`;
+    const f = /^[\d\s.,]+$/.test(t) ? t + ' шт' : t;
+    return `<div class="oc-ilosc">Кількість: ${escapeHtml(f)}</div>`;
+  }
+
+  // Пошук по заявках: нечутливий до регістру та діакритики (ł→l), усі введені слова мають бути в заявці.
+  function normSearch(s){
+    return String(s||'').toLowerCase().replace(/ł/g,'l').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();
+  }
+  function orderHaystack(o){
+    return normSearch([o.numerZlecenia, o.machine, o.dateEff, o.date, o.nrKatalogowy, o.nazwaProduktu,
+      o.labelCode, o.uwagiZlecenia, o.iloscNaZleceniu, o.matched ? 'етикетка знайдена' : 'очікує етикетку',
+      o.labelBrought ? 'принесено' : ''].join(' '));
+  }
+  let ordersQuery = "";
+  function sortedFilteredOrders(){
+    const sorted = state.orders.slice().sort((a,b) => {
+      const d = cmpByDate(a.dateEff, b.dateEff);
+      if (d) return d;
+      if (!!a.labelBrought !== !!b.labelBrought) return a.labelBrought ? 1 : -1;
+      if (a.matched !== b.matched) return a.matched ? -1 : 1;
+      return 0;
+    });
+    const words = normSearch(ordersQuery).split(' ').filter(Boolean);
+    if(!words.length) return sorted;
+    return sorted.filter(o => { const hay = orderHaystack(o); return words.every(w => hay.includes(w)); });
+  }
+
+  // Автовидалення прострочених (на 5+ днів) заявок та нових зліценій. Видаляє з бази адміністратор;
+  // для всіх інших такі картки просто не показуються.
+  const purgingIds = new Set();
+  function purgeExpired(){
+    const expOrders = state.orders.filter(o => isOverdueDelete(o.dateEff));
+    const expNew = state.newOrders.filter(no => isOverdueDelete(no.date));
+    if(!expOrders.length && !expNew.length) return;
+    const ids = new Set(expOrders.concat(expNew).map(x => String(x.id)));
+    state.orders = state.orders.filter(o => !ids.has(String(o.id)));
+    state.newOrders = state.newOrders.filter(no => !ids.has(String(no.id)));
+    if(window.__isAdmin && window.__isAdmin()){
+      ids.forEach(id => {
+        if(purgingIds.has(id)) return;
+        purgingIds.add(id);
+        deleteTrackerRow(id).then(ok => { if(!ok) setTimeout(() => purgingIds.delete(id), 60000); });
+      });
+    }
   }
 
   function guessMachine(code){
@@ -2045,23 +2137,24 @@ document.querySelectorAll(".tab").forEach(t => {
   }
  
   const ordersList = document.getElementById("ordersList");
+  const ordersSearch = document.getElementById("ordersSearch");
+  const ordersSearchInfo = document.getElementById("ordersSearchInfo");
+  ordersSearch.addEventListener("input", () => { ordersQuery = ordersSearch.value; renderOrders(); });
   function renderOrders(){
     // Спочатку заявки, для яких вже знайдено співпадіння етикетки,
     // потім ті, що ще чекають; в межах групи - за датою початку.
-    const arr = state.orders.slice().sort((a,b) => {
-      const d = cmpByDate(a.dateEff, b.dateEff);
-      if (d) return d;
-      if (!!a.labelBrought !== !!b.labelBrought) return a.labelBrought ? 1 : -1;
-      if (a.matched !== b.matched) return a.matched ? -1 : 1;
-      return 0;
-    });
+    const arr = sortedFilteredOrders();
+    const hasQuery = normSearch(ordersQuery) !== "";
+    ordersSearchInfo.textContent = hasQuery ? `Знайдено: ${arr.length} з ${state.orders.length}` : "";
     if(arr.length === 0){
-      ordersList.innerHTML = `<div class="empty">Немає заявок.<br>Натисніть «Додати фото заявок», щоб розпізнати їх з фото екрана.</div>`;
+      ordersList.innerHTML = hasQuery && state.orders.length
+        ? `<div class="empty">Нічого не знайдено за запитом.</div>`
+        : `<div class="empty">Немає заявок.<br>Натисніть «Додати фото заявок», щоб розпізнати їх з фото екрана.</div>`;
       return;
     }
     ordersList.innerHTML = arr.map(o => {
       const missing = !o.machine || !o.numerZlecenia;
-      const cls = o.matched ? "matched" : (missing ? "warn" : "");
+      const cls = (o.matched ? "matched" : (missing ? "warn" : "")) + (isOverdueGray(o.dateEff) ? " overdue" : "");
       const code = extractDigits(o.labelCode) ? o.labelCode.trim() : (o.labelCode ? o.labelCode : 'код?');
       const mainLine = `${o.machine || 'машина?'}  ${code}`;
       const badge = o.matched
@@ -2072,6 +2165,8 @@ document.querySelectorAll(".tab").forEach(t => {
           <div class="oc-no">${escapeHtml(o.numerZlecenia || 'без номера')}</div>
           <div class="oc-main">${escapeHtml(mainLine)}</div>
           <div class="oc-date">${escapeHtml(o.dateEff || 'дата?')}</div>
+          ${iloscHtml(o.iloscNaZleceniu)}
+          <div class="oc-overdue">просрочени</div>
           ${badge}
           <div class="oc-brought-row">
             <span class="oc-brought-label">Етикетку принесено</span>
@@ -2099,7 +2194,7 @@ document.querySelectorAll(".tab").forEach(t => {
     newOrdersList.innerHTML = arr.map(no => {
       const hasLabel = extractDigits(no.labelCode);
       const isFresh = no.createdAt && (Date.now() - no.createdAt) < (10 * 60 * 1000);
-      const colorCls = isFresh ? 'fresh-card' : (hasLabel ? '' : 'missing-label');
+      const colorCls = (isFresh ? 'fresh-card' : (hasLabel ? '' : 'missing-label')) + (isOverdueGray(no.date) ? ' overdue' : '');
       const labelLine = hasLabel
         ? `<div class="oc-label">${escapeHtml(no.labelCode.trim())}</div>`
         : `<div class="oc-label oc-label-missing">код етикетки невідомий</div>`;
@@ -2108,7 +2203,8 @@ document.querySelectorAll(".tab").forEach(t => {
           <div class="oc-no-row"><div class="oc-no">${escapeHtml(no.numerZlecenia || 'без номера')}</div>${no.numerZlecenia ? `<button class="oc-copy" type="button" data-action="copy-num" data-num="${escapeAttr(no.numerZlecenia)}" title="Скопіювати номер">📋</button>` : ''}</div>
           <div class="oc-main">${escapeHtml(no.machine || 'машина?')}</div>
           <div class="oc-date">${escapeHtml(no.date || 'дата?')}</div>
-          ${no.ilosc ? `<div class="oc-ilosc">Ilość: ${escapeHtml(no.ilosc)}</div>` : ''}
+          ${iloscHtml(no.ilosc)}
+          <div class="oc-overdue">просрочени</div>
           ${labelLine}
           <div class="brought-wrap"><div class="brought-dot ${no.brought ? 'on':''}"></div><span>${no.brought ? 'Принесено' : 'Не принесено'}</span></div>
         </div>`;
@@ -2320,13 +2416,7 @@ document.querySelectorAll(".tab").forEach(t => {
     if(state.orders.length === 0){ alert('Немає заявок для друку.'); return; }
 
     // Той самий порядок, що й на екрані: знайдені (matched) заявки першими.
-    const arr = state.orders.slice().sort((a,b) => {
-      const d = cmpByDate(a.dateEff, b.dateEff);
-      if (d) return d;
-      if (!!a.labelBrought !== !!b.labelBrought) return a.labelBrought ? 1 : -1;
-      if (a.matched !== b.matched) return a.matched ? -1 : 1;
-      return 0;
-    });
+    const arr = sortedFilteredOrders();
 
     // Текст малюємо на canvas і вставляємо як зображення в PDF, бо вбудовані
     // шрифти jsPDF (helvetica/times/courier) не містять кириличних гліфів.
@@ -2860,7 +2950,7 @@ document.querySelectorAll(".tab").forEach(t => {
   // ---------- INIT ----------
   renderModelPicker();
   syncTrackerFromServer();
-  setInterval(renderNewOrders, 30000);
+  setInterval(function(){ recompute(); purgeExpired(); renderOrders(); renderNewOrders(); }, 30000);
   sb.channel('tracker-changes')
     .on('postgres_changes', { event: '*', schema: 'public', table: TABLE }, function () { syncTrackerFromServer(); })
     .subscribe();
